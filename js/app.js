@@ -1,4 +1,4 @@
-// 집콕툴 — 라우터 (#pdf-merge 같은 주소로 도구마다 공유 가능)
+// 집문서 — 라우터 (#pdf-merge 같은 주소로 도구마다 공유 가능)
 import { h, ICONS, filesFromPaste, toast } from "./ui.js";
 import { mountMerge, mountSplit, mountOrganize } from "./tools-pdf.js";
 import { mountImgToPdf, mountCompress, mountExif } from "./tools-img.js";
@@ -47,7 +47,7 @@ function route() {
     return;
   }
   home.hidden = true; view.hidden = false;
-  document.title = `${tool.title} — 집콕툴`;
+  document.title = `${tool.title} — 집문서`;
   const body = h("div", { class: "tool-body" });
   view.replaceChildren(h("section", { class: "tool", "aria-labelledby": "tool-title" },
     h("a", { class: "back", href: "#" }, h("span", { html: ICONS.back, style: "display:contents" }), "모든 도구"),

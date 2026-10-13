@@ -36,5 +36,51 @@
         }
       ]
     }
+  ],
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "jipkok.vercel.app"
+        }
+      ],
+      "destination": "https://jipmunseo.vercel.app/",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "jipkok.vercel.app"
+        }
+      ],
+      "destination": "https://jipmunseo.vercel.app/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "anollim.vercel.app"
+        }
+      ],
+      "destination": "https://jipmunseo.vercel.app/",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "anollim.vercel.app"
+        }
+      ],
+      "destination": "https://jipmunseo.vercel.app/:path*",
+      "permanent": true
+    }
   ]
 }

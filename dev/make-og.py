@@ -24,13 +24,13 @@ og = f'''<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewB
 <text x="660" y="110" {F} font-weight="700" font-size="26" fill="#f3efe2">오늘의 작업대</text>
 {cards}
 <path d="M70 236 C200 214 330 246 470 222 S560 222 590 228 L588 262 C470 254 330 270 200 262 S90 268 72 266 Z" fill="#2563eb" fill-opacity=".28"/>
-<text x="72" y="140" {F} font-weight="800" font-size="40" fill="#2a2622">집콕툴</text>
+<text x="72" y="140" {F} font-weight="800" font-size="40" fill="#2a2622">집문서</text>
 <text x="72" y="250" {F} font-weight="900" font-size="78" fill="#2a2622" letter-spacing="-3">업로드 없는</text>
 <text x="72" y="345" {F} font-weight="900" font-size="78" fill="#2a2622" letter-spacing="-3">파일 도구</text>
 <text x="72" y="418" {F} font-weight="600" font-size="28" fill="#6f675e">PDF 합치기 · 나누기 · 사진 압축</text>
 <text x="72" y="458" {F} font-weight="600" font-size="28" fill="#6f675e">배경 지우기 · 위치 정보 지우기</text>
 <g transform="translate(1085,538) rotate(-14) scale(.72)" filter="url(#pen)" fill="none" stroke="#2563eb"><circle r="78" stroke-width="7"/><circle r="64" stroke-width="3"/>
 <text y="16" text-anchor="middle" {F} font-weight="900" font-size="40" fill="#2563eb" stroke="none" letter-spacing="-2">안 나감</text></g>
-<text x="72" y="572" {F} font-size="22" fill="#6f675e">jipkok.vercel.app · 파일이 내 컴퓨터 밖으로 나가지 않아요</text>
+<text x="72" y="572" {F} font-size="22" fill="#6f675e">jipmunseo.vercel.app · 파일이 밖으로 안 나가요</text>
 </svg>'''
 open('og.svg', 'w').write(og)
