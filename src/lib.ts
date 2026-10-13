@@ -182,3 +182,102 @@ export function formatCoord(lat: number, lon: number): string {
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return "";
   return `${Math.abs(lat).toFixed(5)}°${lat >= 0 ? "N" : "S"}, ${Math.abs(lon).toFixed(5)}°${lon >= 0 ? "E" : "W"}`;
 }
+
+/* ───── PDF 용량 줄이기 ───── */
+export type CompressMode = "images" | "raster";
+export type CompressLevel = "light" | "normal" | "strong";
+export interface CompressPreset { maxSide: number; dpi: number; quality: number }
+/** images: 글자는 그대로 두고 안의 사진만 다시 저장 (긴 변 maxSide px) · raster: 쪽마다 dpi 로 그려 JPEG 로 */
+export const COMPRESS_PRESETS: Record<CompressMode, Record<CompressLevel, CompressPreset>> = {
+  images: {
+    light: { maxSide: 2400, dpi: 0, quality: 0.82 },
+    normal: { maxSide: 1800, dpi: 0, quality: 0.72 },
+    strong: { maxSide: 1200, dpi: 0, quality: 0.6 },
+  },
+  raster: {
+    light: { maxSide: 0, dpi: 150, quality: 0.8 },
+    normal: { maxSide: 0, dpi: 120, quality: 0.7 },
+    strong: { maxSide: 0, dpi: 96, quality: 0.6 },
+  },
+};
+
+/** 긴 변이 maxSide 를 넘지 않게 (확대는 안 함, 0 이면 그대로) */
+export function scaleToMaxSide(w: number, h: number, maxSide: number): { width: number; height: number; scale: number } {
+  const long = Math.max(w, h);
+  const s = maxSide > 0 && long > maxSide ? maxSide / long : 1;
+  return { width: Math.max(1, Math.round(w * s)), height: Math.max(1, Math.round(h * s)), scale: s };
+}
+
+/**
+ * PDF FlateDecode 이미지의 PNG 예측(Predictor 10~15) 풀기. 8비트 성분만.
+ * 줄마다 [필터 1바이트 + columns*colors 바이트]. 길이가 안 맞거나 모르는 필터면 null.
+ */
+export function pngUnpredict(data: Uint8Array, columns: number, colors: number): Uint8Array<ArrayBuffer> | null {
+  const bpp = colors, rowLen = columns * colors, stride = rowLen + 1;
+  if (!(columns > 0 && colors > 0) || data.length < stride) return null;
+  const rowsN = Math.floor(data.length / stride);
+  const out = new Uint8Array(rowsN * rowLen);
+  for (let r = 0; r < rowsN; r++) {
+    const f = data[r * stride], src = r * stride + 1, dst = r * rowLen, up = dst - rowLen;
+    for (let i = 0; i < rowLen; i++) {
+      const x = data[src + i];
+      const a = i >= bpp ? out[dst + i - bpp] : 0;
+      const b = r > 0 ? out[up + i] : 0;
+      const c = r > 0 && i >= bpp ? out[up + i - bpp] : 0;
+      let v: number;
+      if (f === 0) v = x;
+      else if (f === 1) v = x + a;
+      else if (f === 2) v = x + b;
+      else if (f === 3) v = x + ((a + b) >> 1);
+      else if (f === 4) {
+        const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+        v = x + (pa <= pb && pa <= pc ? a : pb <= pc ? b : c);
+      } else return null;
+      out[dst + i] = v & 255;
+    }
+  }
+  return out;
+}
+
+/* ───── 서류 사본 가리기 · 워터마크 ───── */
+/** 한국 시간 날짜 "2026.10.13" */
+export function kstDateLabel(nowMs: number = Date.now()): string {
+  const d = new Date(nowMs + 9 * 3600_000);
+  return `${d.getUTCFullYear()}.${String(d.getUTCMonth() + 1).padStart(2, "0")}.${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
+/** 워터마크 줄: "OO은행 제출용" (+ 날짜) (+ 다른 용도 사용 금지) */
+export function watermarkLines({ to, date, forbid }: { to?: unknown; date?: string | null; forbid?: boolean }): string[] {
+  const t = String(to ?? "").replace(/\s+/g, " ").replace(/[\u0000-\u001f]/g, "").trim().slice(0, 30);
+  const lines = [!t ? "제출용" : /제출\s*용$/.test(t) ? t : `${t} 제출용`];
+  if (date) lines.push(date);
+  if (forbid) lines.push("다른 용도 사용 금지");
+  return lines;
+}
+
+export type WatermarkSize = "s" | "m" | "l";
+/** 워터마크 글자 크기(px)·줄 간격·각도. 이미지 넓이(√(가로×세로))에 맞춰요 */
+export function watermarkMetrics(w: number, h: number, size: WatermarkSize): { fontPx: number; lineGap: number; angle: number } {
+  const k = size === "s" ? 0.028 : size === "l" ? 0.055 : 0.04;
+  const fontPx = Math.max(14, Math.round(Math.sqrt(Math.max(1, w * h)) * k));
+  return { fontPx, lineGap: Math.round(fontPx * 1.3), angle: -30 };
+}
+
+export interface Rect { x: number; y: number; w: number; h: number }
+/** 끌어서 그린 네모를 이미지 안으로 자르고 정리. 한 변이 min px 보다 작으면 null */
+export function normRect(x0: number, y0: number, x1: number, y1: number, W: number, H: number, min = 4): Rect | null {
+  const cl = (v: number, m: number) => Math.max(0, Math.min(m, v));
+  const ax = cl(Math.min(x0, x1), W), bx = cl(Math.max(x0, x1), W);
+  const ay = cl(Math.min(y0, y1), H), by = cl(Math.max(y0, y1), H);
+  if (bx - ax < min || by - ay < min) return null;
+  return { x: Math.round(ax), y: Math.round(ay), w: Math.round(bx - ax), h: Math.round(by - ay) };
+}
+
+/** 점이 들어 있는 맨 위(마지막) 네모의 번호, 없으면 -1 */
+export function rectAt(rects: readonly Rect[], x: number, y: number): number {
+  for (let i = rects.length - 1; i >= 0; i--) {
+    const r = rects[i];
+    if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return i;
+  }
+  return -1;
+}

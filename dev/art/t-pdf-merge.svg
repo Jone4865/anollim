@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" color="#2a2622" style="--acc:#2563eb"><defs><filter id="pencil" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.2"/></filter></defs><g filter="url(#pencil)" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" color="#1f1d1a"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
     <path fill="#2563eb" fill-opacity=".22" stroke="none" d="M20 47 L95 39 Q104 38 104 45 L104 47 L22 55 Z"/>
     <path stroke-width="2.3" d="M28 76 l58 -3 l3 9 l-58 3 z" stroke-opacity=".55"/>
     <path stroke-width="2.3" d="M24 73 l58 -4 l4 9 l-58 4 z" fill="#fffdf7"/>

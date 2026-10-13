@@ -1,19 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
 <defs>
 <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#fff" stroke-opacity=".13" stroke-width="2"/></pattern>
-<filter id="pen" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="4"/><feDisplacementMap in="SourceGraphic" scale="3"/></filter>
 </defs>
 <rect width="512" height="512" rx="112" fill="#2e6a50"/>
 <rect width="512" height="512" rx="112" fill="url(#grid)"/>
 <rect x="14" y="14" width="484" height="484" rx="100" fill="none" stroke="#255a43" stroke-width="14"/>
-<g transform="rotate(-7 250 260)">
-<path d="M128 96h196l64 64v262H128z" fill="#fffdf7"/>
-<path d="M324 96v64h64z" fill="#e8e0cf"/>
-<g stroke="#d9d0c1" stroke-width="14" stroke-linecap="round"><path d="M168 170h110M168 214h170M168 258h150"/></g>
-</g>
-<g filter="url(#pen)" transform="rotate(-14 300 330)" fill="none" stroke="#2563eb">
-<circle cx="300" cy="330" r="118" stroke-width="16"/>
-<circle cx="300" cy="330" r="96" stroke-width="6"/>
-<text x="300" y="352" text-anchor="middle" fill="#2563eb" stroke="none" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-weight="900" font-size="60" letter-spacing="-2">안 나감</text>
-</g>
+<path d="M136 84h180l76 76v256a12 12 0 0 1-12 12H136a12 12 0 0 1-12-12V96a12 12 0 0 1 12-12z" fill="#fff"/>
+<path d="M316 84v64a12 12 0 0 0 12 12h64z" fill="#d9e3dc"/>
+<g stroke="#d4ddd7" stroke-width="16" stroke-linecap="round"><path d="M172 176h108M172 224h164M172 272h92"/></g>
+<circle cx="350" cy="360" r="108" fill="#2563eb" stroke="#2e6a50" stroke-width="14"/>
+<path d="M350 298l54 20v40c0 31-23 57-54 62-31-5-54-31-54-62v-40z" fill="none" stroke="#fff" stroke-width="16" stroke-linejoin="round"/>
+<path d="M326 360l17 17 32-36" fill="none" stroke="#fff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

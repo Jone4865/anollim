@@ -1,5 +1,5 @@
-// 손그림 문구류 일러스트 (연필 선). 색: currentColor = 잉크, --acc = 포인트(파랑)
-// 같은 그림을 assets/t-*.svg 로도 내보내요 (dev/export-art.mjs).
+// 도구 일러스트 (선 그림). 색: currentColor = 잉크, --acc = 포인트(파랑)
+// 공유 이미지(og)를 만들 때 쓰려고 dev/art/t-*.svg 로도 내보내요 (dev/export-art.mjs).
 
 const S = 'stroke-width="2.3"'; // 기본 fill="none" stroke="currentColor" 는 바깥 <g> 에서 줘요
 const A = 'fill="var(--acc, #2563eb)" fill-opacity=".22" stroke="none"';
@@ -74,6 +74,25 @@ export const ART: Record<string, string> = {
     <path ${S} d="M70 51 L90 67"/>
     <path ${S} d="M18 84 q10 -4 20 0 t20 0" stroke-opacity=".45"/>
     <circle cx="46" cy="76" r="1.5" fill="currentColor"/><circle cx="52" cy="80" r="1.2" fill="currentColor"/><circle cx="40" cy="80" r="1" fill="currentColor"/>`,
+  // 눌러 줄인 서류 = PDF 용량 줄이기
+  "pdf-compress": `
+    <path ${S} d="M30 10 h44 l12 12 v58 h-56 z" stroke-opacity=".4" stroke-dasharray="4 5"/>
+    <path ${S} d="M42 28 h26 l8 8 v34 h-34 z" fill="#fffdf7"/>
+    <path ${S} d="M68 28 v8 h8"/>
+    <path ${A} d="M46 58 h26 v8 h-26 z"/>
+    <path ${S} d="M48 44 h20 M48 51 h22" stroke-opacity=".5"/>
+    <path ${S} d="M100 8 L84 24 M84 14 v10 h10" stroke="var(--acc, #2563eb)"/>
+    <path ${S} d="M16 84 L32 68 M32 78 v-10 h-10" stroke="var(--acc, #2563eb)"/>`,
+  // 가린 신분증 + 제출용 띠 = 사본 가리기 · 워터마크
+  "id-mask": `
+    <path ${S} d="M20 18 H100 Q106 18 106 24 V68 Q106 74 100 74 H20 Q14 74 14 68 V24 Q14 18 20 18 Z" fill="#fffdf7"/>
+    <path ${A} d="M14 60 L74 18 L92 18 L24 74 L20 74 Q14 74 14 68 Z"/>
+    <path ${S} d="M24 30 h22 v28 h-22 z"/>
+    <circle ${S} cx="35" cy="40" r="5"/>
+    <path ${S} d="M27 56 q8 -9 16 0"/>
+    <path ${S} d="M54 32 h40 M54 41 h28" stroke-opacity=".55"/>
+    <path d="M54 50 h44 v8 h-44 z" fill="currentColor" stroke="none"/>
+    <path ${S} d="M54 66 h22" stroke-opacity=".55"/>`,
 };
 
 export const ART_VIEWBOX = "0 0 120 90";
@@ -81,24 +100,5 @@ export const G = 'fill="none" stroke="currentColor" stroke-linecap="round" strok
 
 /** 인라인 SVG 문자열 (잉크색 = currentColor) */
 export function art(id: string, cls = "art"): string {
-  return `<svg class="${cls}" viewBox="${ART_VIEWBOX}" aria-hidden="true"><g filter="url(#pencil)" ${G}>${ART[id] || ""}</g></svg>`;
+  return `<svg class="${cls}" viewBox="${ART_VIEWBOX}" aria-hidden="true"><g ${G}>${ART[id] || ""}</g></svg>`;
 }
-
-/** "안 나감" 도장 */
-export function stamp(cls = "stamp", sub = "파일은 여기 그대로") {
-  return `<svg class="${cls}" viewBox="0 0 160 160" aria-hidden="true">
-    <defs><path id="stamp-arc" d="M28 80 a52 52 0 1 1 104 0 a52 52 0 1 1 -104 0"/></defs>
-    <g filter="url(#ink)" fill="none" stroke="currentColor">
-      <circle cx="80" cy="80" r="72" stroke-width="5"/>
-      <circle cx="80" cy="80" r="62" stroke-width="2"/>
-      <circle cx="80" cy="80" r="40" stroke-width="2"/>
-      <text fill="currentColor" stroke="none" font-size="13" font-weight="800" letter-spacing="3"><textPath href="#stamp-arc" startOffset="2%">${sub} · ${sub} ·</textPath></text>
-      <text x="80" y="91" text-anchor="middle" fill="currentColor" stroke="none" font-size="30" font-weight="900" letter-spacing="-1">안 나감</text>
-    </g></svg>`;
-}
-
-/** 페이지 공통 SVG 필터 (연필 흔들림, 도장 잉크 번짐) */
-export const FILTERS = `<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
-  <filter id="pencil" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.2"/></filter>
-  <filter id="ink" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="2" result="t"/><feColorMatrix in="t" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.4 1.3" result="m"/><feComposite in="SourceGraphic" in2="m" operator="in" result="c"/><feTurbulence type="fractalNoise" baseFrequency="0.05" seed="7" result="w"/><feDisplacementMap in="c" in2="w" scale="2.5"/></filter>
-</defs></svg>`;

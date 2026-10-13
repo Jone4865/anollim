@@ -36,7 +36,7 @@ export const ICONS: Record<string, string> = {
   check: `<svg viewBox="0 0 24 24" ${P} stroke-width="3"><path d="M5 12l5 5 9-10"/></svg>`,
   ok: `<svg viewBox="0 0 24 24" ${P}><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>`,
   dl: `<svg viewBox="0 0 24 24" ${P}><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>`,
-  upload: `<svg class="drop-ico" viewBox="0 0 80 60" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><g filter="url(#pencil)"><path d="M22 20 l26 -2 l8 8 l2 30 l-34 2 z" stroke-opacity=".55"/><path d="M18 24 l26 -2 l8 8 l2 28 l-34 2 z" fill="rgba(255,253,247,.12)"/><path d="M44 22 l1 8 l7 0"/><path d="M36 2 v24 M29 19 l7 7 l7 -7" stroke-width="3"/></g></svg>`,
+  upload: `<svg class="drop-ico" viewBox="0 0 80 60" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 20 h26 l8 8 v30 h-34 z" stroke-opacity=".5"/><path d="M18 24 h26 l8 8 v26 h-34 z" fill="rgba(255,255,255,.1)"/><path d="M44 24 v8 h8"/><path d="M36 2 v24 M29 19 l7 7 l7 -7" stroke-width="3"/></svg>`,
   shield: `<svg viewBox="0 0 24 24" ${P}><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>`,
   back: `<svg viewBox="0 0 24 24" ${P} width="16" height="16"><path d="M15 6l-6 6 6 6"/></svg>`,
 };
@@ -137,11 +137,6 @@ export function resultItem({ name, blob, extra, thumb }: { name: string; blob: B
     btn);
 }
 
-export function resultBox(title: string): HTMLDivElement {
-  const box = h("div", { class: "result" }, h("h2", {}, icon("ok"), title));
-  // 테스트·자동화를 위해 마지막 결과를 남겨둬요 (전송 아님)
-  return box;
-}
 
 /* ───── 드래그로 순서 바꾸기 (데스크톱). 휴대폰은 버튼으로 ───── */
 export function sortable(container: HTMLElement, itemSelector: string, onMove: (from: number, to: number) => void, { horizontal = false } = {}): void {
@@ -155,7 +150,7 @@ export function sortable(container: HTMLElement, itemSelector: string, onMove: (
     it.classList.add("dragging");
     const dt = e.dataTransfer as DataTransfer;
     dt.effectAllowed = "move";
-    dt.setData("text/x-jipkok", String(from));
+    dt.setData("text/x-jipmunseo", String(from));
   });
   const where = (e: DragEvent, it: Element) => {
     const r = it.getBoundingClientRect();
@@ -271,6 +266,22 @@ export async function openPdfjs(buf: ArrayBuffer): Promise<PdfjsDocument> {
     if (e && (e as Error).name === "PasswordException") throw new Error("암호가 걸린 PDF예요. 암호를 푼 뒤 다시 넣어 주세요.");
     throw new Error("PDF를 읽지 못했어요. 파일이 깨졌거나 PDF가 아닐 수 있어요.");
   }
+}
+
+/** PDF 한 쪽을 dpi 로 흰 바탕 캔버스에 그려요 (화소 한도 안으로). wPt·hPt 는 원래 쪽 크기(회전 반영) */
+export async function renderPdfPage(doc: PdfjsDocument, n: number, dpi: number): Promise<{ canvas: HTMLCanvasElement; wPt: number; hPt: number }> {
+  const page = await doc.getPage(n + 1);
+  const vp1 = page.getViewport({ scale: 1 });
+  let scale = dpi / 72;
+  if (vp1.width * vp1.height * scale * scale > MAX_PIXELS) scale = Math.sqrt(MAX_PIXELS / (vp1.width * vp1.height));
+  const vp = page.getViewport({ scale });
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.ceil(vp.width)); c.height = Math.max(1, Math.ceil(vp.height));
+  const g = c.getContext("2d") as CanvasRenderingContext2D;
+  g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+  await page.render({ canvasContext: g, viewport: vp }).promise;
+  page.cleanup();
+  return { canvas: c, wPt: vp1.width, hPt: vp1.height };
 }
 
 /** 보이는 썸네일부터 차례로 그려요 */

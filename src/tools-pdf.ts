@@ -1,6 +1,7 @@
 // PDF 도구: 합치기 / 나누기·페이지 빼기 / 회전·순서
-import { h, ICONS, icon, iconBtn, dropzone, progress, alertBox, errMsg, resultBox, resultItem, sortable, seg, filterFiles, LIMITS, runPdf, openPdfjs, thumbRenderer, makeZip, toast } from "./ui.js";
-import { formatSize, outName, moveItem, parseRanges, rangesToSet, formatRanges, uniqueNames, baseName, safeName, normRotation } from "./lib.js";
+import { h, ICONS, icon, iconBtn, dropzone, progress, alertBox, errMsg, resultItem, sortable, seg, filterFiles, LIMITS, runPdf, openPdfjs, thumbRenderer, makeZip, toast, renderPdfPage, canvasToBlob } from "./ui.js";
+import { formatSize, outName, moveItem, parseRanges, rangesToSet, formatRanges, uniqueNames, baseName, safeName, normRotation, savedPercent, COMPRESS_PRESETS, type CompressMode, type CompressLevel } from "./lib.js";
+import type { ShrinkStats } from "./pdf-shrink.js";
 import type { ThumbRenderer } from "./ui.js";
 import type { PdfjsDocument } from "./vendor.js";
 import type { Mounted } from "./app.js";
@@ -23,7 +24,7 @@ export function mountMerge(root: HTMLElement): Mounted {
   const clearBtn = h("button", { type: "button", class: "btn ghost sm", onclick: () => { files = []; out.replaceChildren(); render(); } }, "모두 지우기");
   const panel = h("div", { class: "panel", hidden: true },
     h("div", { class: "panel-head" }, h("h2", {}, "합칠 순서"), h("div", { class: "row" }, summary, clearBtn)),
-    h("p", { class: "hint", style: "margin:-6px 0 10px" }, "끌어서 놓거나 화살표 버튼으로 순서를 바꿀 수 있어요."),
+    h("p", { class: "hint", style: "margin:-6px 0 10px" }, "끌어서 놓거나 화살표 버튼으로 순서를 바꿀 수 있어요. 책갈피(목차)와 입력 칸은 합친 파일로 따라오지 않아요."),
     listEl);
   const out = h("div");
   const dz = dropzone({ accept: "application/pdf,.pdf", title: "PDF 파일을 여기에 끌어다 놓으세요", sub: "또는 눌러서 고르기 · 여러 개 한꺼번에 가능", onFiles: add });
@@ -351,4 +352,103 @@ export function mountOrganize(root: HTMLElement): Mounted {
     finally { setTimeout(() => prog.hide(), 800); render(); }
   }
   return { unmount: () => cur?.renderer.destroy() };
+}
+
+/* ═════════ 4. PDF 용량 줄이기 ═════════ */
+export function mountPdfCompress(root: HTMLElement): Mounted {
+  let cur: { file: File; buf: ArrayBuffer; pages: number } | null = null;
+  const C = () => cur as NonNullable<typeof cur>; // PDF 를 연 뒤에만 불림
+  let mode: CompressMode = "images", level: CompressLevel = "normal";
+  const err = alertBox();
+  const prog = progress();
+  const out = h("div");
+  const dz = dropzone({ accept: "application/pdf,.pdf", multiple: false, title: "줄일 PDF 하나를 끌어다 놓으세요", sub: "또는 눌러서 고르기", onFiles: (f) => load(f[0]) });
+  const fileLine = h("div", { class: "muted" });
+  const modeHint = h("div", { class: "hint" });
+  const levelHint = h("div", { class: "hint" });
+  const modeSeg = seg<CompressMode>([{ value: "images", label: "사진만 줄이기" }, { value: "raster", label: "쪽을 통째로 이미지로" }], mode, (v) => { mode = v; sync(); });
+  const levelSeg = seg<CompressLevel>([{ value: "light", label: "조금" }, { value: "normal", label: "보통" }, { value: "strong", label: "많이" }], level, (v) => { level = v; sync(); });
+  const go = h("button", { type: "button", class: "btn primary big", onclick: run }, "용량 줄이기");
+  const work = h("div", { hidden: true },
+    h("div", { class: "panel" },
+      h("div", { class: "panel-head" }, fileLine, h("button", { type: "button", class: "btn ghost sm", onclick: reset }, "다른 PDF")),
+      h("div", { class: "opts" },
+        h("div", { class: "opt" }, h("span", { class: "lbl" }, "방법"), modeSeg, modeHint),
+        h("div", { class: "opt" }, h("span", { class: "lbl" }, "얼마나 줄일까요?"), levelSeg, levelHint))),
+    h("div", { class: "actions" }, go));
+  root.append(dz, err.el, work, prog.el, out);
+
+  function sync() {
+    modeHint.textContent = mode === "images"
+      ? "글자·링크·책갈피는 그대로 두고 안에 든 사진만 다시 저장해요. 글자만 있는 PDF는 많이 줄지 않아요."
+      : "스캔한 서류에 좋아요. 쪽마다 그림으로 다시 그려서 가장 작아지지만, 글자를 고르거나 검색할 수 없고 링크·책갈피·입력 칸이 빠져요.";
+    const p = COMPRESS_PRESETS[mode][level];
+    levelHint.textContent = mode === "images" ? `사진 긴 변 ${p.maxSide}px · 화질 ${Math.round(p.quality * 100)}%` : `${p.dpi}dpi · 화질 ${Math.round(p.quality * 100)}%`;
+    out.replaceChildren();
+  }
+  function reset() {
+    cur = null; out.replaceChildren(); err.hide();
+    work.hidden = true; dz.hidden = false;
+  }
+  async function load(file: File): Promise<void> {
+    err.hide(); out.replaceChildren();
+    if (!filterFiles([file], ["pdf"], LIMITS.pdfFile, (m) => err.show(m)).length) return;
+    reset();
+    try {
+      prog.set(null, "PDF 여는 중…");
+      const buf = await file.arrayBuffer();
+      const copy = buf.slice(0);
+      const { pages } = await runPdf<{ pages: number }>("count", { buf: copy }, [copy]);
+      cur = { file, buf, pages };
+      fileLine.replaceChildren(h("b", { style: "color:var(--ink)" }, file.name), ` · ${pages}쪽 · ${formatSize(file.size)}`);
+      dz.hidden = true; work.hidden = false;
+      sync();
+    } catch (e) { err.show(errMsg(e)); reset(); }
+    finally { prog.hide(); }
+  }
+
+  async function run() {
+    err.hide(); out.replaceChildren(); go.disabled = true;
+    const p = COMPRESS_PRESETS[mode][level];
+    const before = C().file.size;
+    try {
+      let bytes: Uint8Array<ArrayBuffer>, stats: ShrinkStats | null = null;
+      if (mode === "images") {
+        const buf = C().buf.slice(0);
+        prog.set(0, "PDF 안의 사진을 찾는 중…");
+        ({ bytes, stats } = await runPdf<{ bytes: Uint8Array<ArrayBuffer>; stats: ShrinkStats }>("compress", { buf, maxSide: p.maxSide, quality: p.quality }, [buf],
+          (d, t) => prog.set(d / t * 0.95, `${d}/${t} 줄이는 중…`)));
+      } else {
+        const doc = await openPdfjs(C().buf.slice(0));
+        const pages: { bytes: Uint8Array<ArrayBuffer>; wPt: number; hPt: number }[] = [];
+        try {
+          for (let i = 0; i < doc.numPages; i++) {
+            prog.set(i / doc.numPages * 0.8, `${i + 1}/${doc.numPages}쪽 그리는 중…`);
+            const r = await renderPdfPage(doc, i, p.dpi);
+            const b = await canvasToBlob(r.canvas, "image/jpeg", p.quality);
+            r.canvas.width = r.canvas.height = 0;
+            pages.push({ bytes: new Uint8Array(await b.arrayBuffer()), wPt: r.wPt, hPt: r.hPt });
+          }
+        } finally { doc.destroy?.(); }
+        ({ bytes } = await runPdf<{ bytes: Uint8Array<ArrayBuffer> }>("pages", { pages }, pages.map((x) => x.bytes.buffer), (d, t) => prog.set(0.8 + d / t * 0.15, `${d}/${t}쪽 묶는 중…`)));
+      }
+      prog.set(1, "완료!");
+      const blob = pdfBlob(bytes);
+      const pct = savedPercent(before, blob.size);
+      const notes: string[] = [];
+      if (stats) {
+        notes.push(stats.images ? `사진 ${stats.images}장 중 ${stats.recompressed}장을 줄였어요.` : "PDF 안에 사진이 없어요.");
+        if (stats.images && !stats.canRecode) notes.push("이 브라우저는 사진을 다시 그릴 수 없어서 사진은 그대로 뒀어요. 크롬·엣지·최신 사파리에서 해 보세요.");
+      }
+      if (pct < 0) notes.push("원본이 더 작아요. 원본을 그대로 쓰세요.");
+      else if (pct < 3) notes.push(mode === "images" ? "더 줄일 게 거의 없었어요. 스캔한 서류라면 '쪽을 통째로 이미지로'를 써 보세요." : "더 줄일 게 거의 없었어요. 원본을 그대로 써도 돼요.");
+      out.replaceChildren(h("div", { class: "result", id: "result" },
+        h("h2", {}, icon("ok"), `${formatSize(before)} → ${formatSize(blob.size)}`,
+          h("span", { class: `pill ${pct > 0 ? "good" : pct < 0 ? "bad" : ""}` }, pct > 0 ? `${pct}% 줄었어요` : pct < 0 ? `${-pct}% 커졌어요` : "거의 그대로")),
+        notes.length ? h("p", { class: "hint", style: "margin:-4px 0 6px" }, notes.join(" ")) : null,
+        resultItem({ name: outName(C().file.name, "줄임", "pdf"), blob, extra: mode === "images" ? "글자 그대로" : `${C().pages}쪽 · 이미지 PDF` })));
+    } catch (e) { err.show(errMsg(e)); }
+    finally { setTimeout(() => prog.hide(), 800); go.disabled = false; }
+  }
+  return { unmount: reset };
 }

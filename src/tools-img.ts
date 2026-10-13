@@ -233,6 +233,7 @@ export function mountCompress(root: HTMLElement): Mounted {
           p < 0 && r.type === r.it.file.type && r.w === r.it.w ? h("span", { class: "muted" }, " 원본이 더 작아요 — 원본을 그대로 쓰세요") : null);
         box.append(resultItem({ name: r.name, blob: r.blob, extra, thumb: h("img", { class: "fthumb", src: r.it.thumb, alt: "" }) }));
       }
+      if (results.some((r) => r.it.file.type === "image/gif")) box.append(h("p", { class: "hint" }, "움직이는 GIF는 첫 장면만 남아요."));
       out.replaceChildren(box);
     } catch (e) { err.show(errMsg(e)); }
     finally { setTimeout(() => prog.hide(), 800); list.onChange(); }
@@ -281,7 +282,7 @@ export function mountExif(root: HTMLElement): Mounted {
   const panel = h("div", { class: "panel", hidden: true },
     h("div", { class: "panel-head" }, h("h2", {}, "찾은 정보"), h("button", { type: "button", class: "btn ghost sm", onclick: () => { list.clear(); out.replaceChildren(); } }, "모두 지우기")),
     list.el, summary,
-    h("p", { class: "hint" }, "사진을 브라우저에서 새로 그려 저장하는 방식이라 위치 · 카메라 · 날짜 같은 정보가 모두 빠져요. 사진 방향은 맞게 돌려서 저장해요. JPG는 화질 95%로 저장해요."));
+    h("p", { class: "hint" }, "사진을 브라우저에서 새로 그려 저장하는 방식이라 위치 · 카메라 · 날짜 같은 정보가 모두 빠져요. 사진 방향은 맞게 돌려서 저장해요. JPG는 화질 95%로 저장하고, 색 프로필이 빠져서 넓은 색영역 사진은 색이 조금 달라질 수 있어요."));
   root.append(dz, err.el, panel, h("div", { class: "actions" }, go), prog.el, out);
 
   list.onChange = () => {
@@ -314,7 +315,7 @@ export function mountExif(root: HTMLElement): Mounted {
   async function run() {
     err.hide(); out.replaceChildren(); go.disabled = true;
     const its = list.items.filter(isDecoded);
-    const results: { it: ImgItem; blob: Blob; after: Meta; name: string }[] = [];
+    const results: { it: ImgItem; blob: Blob; after: Meta; name: string; shrunk: string | null }[] = [];
     try {
       for (let i = 0; i < its.length; i++) {
         const it = its[i];
@@ -323,11 +324,13 @@ export function mountExif(root: HTMLElement): Mounted {
         let type = it.file.type;
         if (!["image/jpeg", "image/png", "image/webp"].includes(type) || !(await canEncode(type))) type = it.file.type === "image/png" ? "image/png" : "image/jpeg";
         const c = drawToCanvas(img, img.width, img.height, type === "image/jpeg" ? "#fff" : null);
+        // 기기 한계(아이폰은 1,600만 화소)보다 큰 사진은 줄어들어요 → 결과에 알려요
+        const shrunk = c.width < img.width ? `${img.width}×${img.height} → ${c.width}×${c.height}` : null;
         img.close();
         const blob = await canvasToBlob(c, type, type === "image/png" ? undefined : 0.95);
         c.width = c.height = 0;
         const after = await readMeta(blob);
-        results.push({ it, blob, after, name: outName(it.file.name, "정보삭제", extFor(type)) });
+        results.push({ it, blob, after, name: outName(it.file.name, "정보삭제", extFor(type)), shrunk });
       }
       prog.set(1, "완료!");
       const names = uniqueNames(results.map((r) => r.name));
@@ -338,7 +341,10 @@ export function mountExif(root: HTMLElement): Mounted {
         const zipBtn: HTMLButtonElement = h("button", { type: "button", class: "btn primary", onclick: async () => { zipBtn.disabled = true; try { download(await makeZip(results), `사진-${results.length}장-정보삭제.zip`); } catch (e) { err.show(errMsg(e)); } zipBtn.disabled = false; } }, icon("dl"), "모두 ZIP으로 받기");
         box.append(h("div", { class: "row", style: "margin-bottom:8px" }, zipBtn));
       }
-      for (const r of results) box.append(resultItem({ name: r.name, blob: r.blob, thumb: h("img", { class: "fthumb", src: r.it.thumb, alt: "" }), extra: r.after.count === 0 ? h("span", { class: "chip clean" }, "다시 확인: 남은 정보 없음") : h("span", { class: "chip" }, `남은 정보 ${r.after.count}개`) }));
+      for (const r of results) box.append(resultItem({ name: r.name, blob: r.blob, thumb: h("img", { class: "fthumb", src: r.it.thumb, alt: "" }), extra: h("span", {},
+        r.after.count === 0 ? h("span", { class: "chip clean" }, "다시 확인: 남은 정보 없음") : h("span", { class: "chip" }, `남은 정보 ${r.after.count}개`),
+        r.shrunk ? h("span", { class: "chip warn", title: "이 기기가 다룰 수 있는 크기보다 커서 줄였어요" }, `크기 줄어듦 ${r.shrunk}`) : null) }));
+      if (results.some((r) => r.shrunk)) box.append(h("p", { class: "hint" }, "이 기기가 한 번에 다룰 수 있는 크기보다 큰 사진은 해상도가 줄어요. 원래 크기가 필요하면 PC에서 해 주세요."));
       out.replaceChildren(box);
     } catch (e) { err.show(errMsg(e)); }
     finally { setTimeout(() => prog.hide(), 800); list.onChange(); }

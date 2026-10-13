@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>집문서 — 업로드 없는 파일 도구</title>
-<meta name="description" content="PDF 합치기·나누기·회전, 이미지 압축·변환, 사진 배경 지우기, 사진 위치 정보 지우기. 모든 처리는 브라우저 안에서 끝나요. 파일을 서버로 올리지 않아요.">
+<meta name="description" content="PDF 합치기·나누기·회전·용량 줄이기, 신분증 가리기·제출용 워터마크, 이미지 압축·변환, 사진 배경·위치 정보 지우기. 모든 처리는 브라우저 안에서 끝나요. 파일을 서버로 올리지 않아요.">
 <meta name="theme-color" content="#f6f1e7">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://jipmunseo.pages.dev/">
 <meta property="og:title" content="집문서 — 업로드 없는 파일 도구">
-<meta property="og:description" content="PDF·사진 작업을 브라우저 안에서. 파일을 서버로 올리지 않아요.">
+<meta property="og:description" content="PDF 용량 줄이기, 신분증 가리기·워터마크까지 브라우저 안에서. 파일을 서버로 올리지 않아요.">
 <meta property="og:image" content="https://jipmunseo.pages.dev/assets/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -17,25 +17,21 @@
 <link rel="icon" href="/assets/favicon.png" type="image/png">
 <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css" integrity="sha384-2nNKoOPayicGa+aRguOQuiZP+RqQ4G3jalfDeOgftkKD7zBM2gJXTwcFqCZltdv0" crossorigin="anonymous">
 <link rel="stylesheet" href="/css/style.css">
-<script defer src="https://cdn.jsdelivr.net/npm/roughjs@4.6.6/bundled/rough.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
 <script type="module" src="/src/app.ts"></script>
 </head>
 <body>
 <div class="wrap">
   <nav>
-    <a class="brand" href="#"><img src="/assets/icon.svg" alt="" width="38" height="38"><span>집문서<small class="hand">업로드 없는 파일 도구</small></span></a>
+    <a class="brand" href="#"><img src="/assets/icon.svg" alt="" width="38" height="38"><span>집문서<small>업로드 없는 파일 도구</small></span></a>
     <div class="links"><a href="#tools">도구</a><a href="#trust">정말 안 올라가나요?</a></div>
   </nav>
 
   <main id="home">
     <header class="hero">
       <div class="hero-text">
-        <p class="hand hero-note">설치 ✕ · 가입 ✕ · 업로드 ✕</p>
+        <p class="hero-note"><span>설치 없음</span><span>가입 없음</span><span>업로드 없음</span></p>
         <h1><span class="marker">업로드 없는</span><br>파일 도구</h1>
         <p class="lead">PDF 합치기부터 사진 배경 지우기까지, 모든 작업은 지금 보고 있는 이 브라우저 안에서 끝나요. <b>파일은 집에만 — 어디에도 올리지 않아요.</b></p>
       </div>
@@ -43,7 +39,7 @@
         <div class="mat mat-mini">
           <div class="sheet hero-sheet s1"><span class="sheet-name">계약서.pdf</span><i></i><i></i><i></i><i class="short"></i></div>
           <div class="sheet hero-sheet s2"><span class="sheet-name">여권사진.jpg</span><span class="photo-ph"></span></div>
-          <div class="hero-stamp" id="hero-stamp"></div>
+          <div class="hero-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><span><b>0 B</b>서버로 보낸 파일</span></div>
         </div>
       </div>
     </header>
@@ -51,29 +47,29 @@
     <section id="tools" class="bench-wrap" aria-label="도구 목록">
       <div class="mat bench">
         <div class="ruler ruler-top" aria-hidden="true"></div>
-        <p class="tape hand bench-title">오늘의 작업대 — 쓸 도구를 집어 드세요</p>
+        <p class="bench-title">작업대 · 쓸 도구를 고르세요</p>
         <div class="tools" id="tool-grid"></div>
       </div>
     </section>
 
     <section id="trust" class="trust">
       <div class="note">
-        <span class="tape tape-l" aria-hidden="true"></span><span class="tape tape-r" aria-hidden="true"></span>
-        <h2>정말 <span class="circled" id="circ">안 올라가나요?</span></h2>
-        <p>집문서에는 파일을 받는 서버가 아예 없고, 이 사이트의 코드는 넣은 파일을 어디로도 보내지 않아요. 페이지에 <b>보안 정책(CSP)</b>도 걸어서, 브라우저가 데이터를 보낼 수 있는 곳을 이 사이트와 배경 지우기 모델을 받는 곳으로 좁혀 두었어요.</p>
-        <p>다만 화면 효과 스크립트(rough.js·anime.js)와 글꼴은 외부 CDN(jsDelivr·Google Fonts)에서 불러와요. 이 스크립트도 페이지 안에서 실행되니, 아래 방법으로 직접 확인해 보시는 게 가장 확실해요.</p>
+        <h2>정말 <span class="marker">안 올라가나요?</span></h2>
+        <p>집문서에는 파일을 받는 서버가 아예 없고, 이 사이트의 코드는 넣은 파일을 어디로도 보내지 않아요. 페이지에 <b>보안 정책(CSP)</b>을 걸어서 실행되는 스크립트는 이 사이트에서 받은 것만 허용하고, 브라우저가 데이터를 보낼 수 있는 곳도 이 사이트와 배경 지우기 모델을 받는 곳으로 좁혀 두었어요.</p>
+        <p>밖에서 받는 건 글꼴(Pretendard, jsDelivr)과, 배경 지우기를 쓸 때만 받는 AI 모델·실행 파일(IMG.LY)뿐이에요. 그래도 아래 방법으로 직접 확인해 보시는 게 가장 확실해요.</p>
         <ol class="steps">
           <li>PC에서 <kbd>F12</kbd>(맥은 <kbd>⌥⌘I</kbd>)로 개발자 도구를 열어요.</li>
           <li><b>네트워크</b> 탭을 연 채로 아무 도구에 파일을 넣어 보세요.</li>
           <li>파일 크기만 한 요청이 하나도 안 생기는 걸 직접 확인할 수 있어요.</li>
         </ol>
-        <p class="hand memo">* 배경 지우기만 처음 한 번 AI 모델(약 56MB)을 받아와요. 받아오기만 하고, 사진은 안 보내요.</p>
+        <p class="memo">배경 지우기만 처음 한 번 AI 모델(약 56MB)을 받아와요. 받아오기만 하고, 사진은 안 보내요.</p>
       </div>
       <div class="slip" aria-label="걸어둔 보안 정책 요약">
-        <p class="slip-h hand">보안 정책 메모</p>
+        <p class="slip-h">걸어 둔 보안 정책</p>
         <dl>
           <div><dt>데이터 보낼 수 있는 곳</dt><dd>이 사이트 + 모델 받는 곳</dd></div>
-          <div><dt>밖에서 불러오는 것</dt><dd>글꼴 · 화면 효과 스크립트</dd></div>
+          <div><dt>밖에서 받는 스크립트</dt><dd>배경 지우기 모델만</dd></div>
+          <div><dt>밖에서 받는 글꼴</dt><dd>Pretendard (무결성 검사)</dd></div>
           <div><dt>파일 받는 서버</dt><dd class="big">0개</dd></div>
           <div><dt>폼 전송</dt><dd>막음</dd></div>
           <div><dt>방문 분석 · 광고</dt><dd>없음</dd></div>
@@ -86,8 +82,8 @@
 
   <footer>
     <nav class="other-tools" id="other-tools" aria-label="다른 도구" hidden></nav>
-    <p>개인정보: 로그인 없음. 파일은 브라우저 메모리에서만 다루고, 이 사이트는 파일을 어디에도 저장·전송하지 않아요. 저장하는 데이터도 없어요. 글꼴·화면 효과 스크립트는 jsDelivr·Google Fonts 에서, 배경 지우기 모델은 IMG.LY(staticimgly.com)에서 받아요 — 받을 때 그 서버에 접속 정보(IP 등)가 남을 수 있어요.</p>
-    <p>쓴 오픈소스: pdf-lib · PDF.js · fflate · exifr · heic-to · <a href="https://github.com/imgly/background-removal-js" target="_blank" rel="noopener">@imgly/background-removal</a>(AGPL-3.0, CSP에 맞게 일부 수정) · ONNX Runtime Web · rough.js · anime.js · <a href="/licenses">라이선스 고지</a></p>
+    <p>개인정보: 로그인 없음. 파일은 브라우저 메모리에서만 다루고, 이 사이트는 파일을 어디에도 저장·전송하지 않아요. 저장하는 데이터도 없어요. 글꼴은 jsDelivr 에서, 배경 지우기 모델은 IMG.LY(staticimgly.com)에서 받아요 — 받을 때 그 서버에 접속 정보(IP 등)가 남을 수 있어요.</p>
+    <p>쓴 오픈소스: pdf-lib · PDF.js · fflate · exifr · heic-to · <a href="https://github.com/imgly/background-removal-js" target="_blank" rel="noopener">@imgly/background-removal</a>(AGPL-3.0, CSP에 맞게 일부 수정) · ONNX Runtime Web · Pretendard · <a href="/licenses">라이선스 고지</a></p>
     <p>문의: <a href="mailto:cowhddnjsdl0@gmail.com">cowhddnjsdl0@gmail.com</a> · <a href="https://toon.at/donate/ggyaaaaak" target="_blank" rel="noopener">☕ 응원하기</a></p>
     <p>집문서는 <a href="https://github.com/Jone4865/jipmunseo" target="_blank" rel="noopener">소스 코드가 공개</a>된 AGPL-3.0 프로젝트예요.</p>
     <p>© 2026 집문서 · <a href="https://jone-lab.pages.dev">Jone Lab의 다른 프로젝트 보기</a></p>
