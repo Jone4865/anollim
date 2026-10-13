@@ -1,10 +1,10 @@
 {
-  "name": "anollim",
+  "name": "jipkok",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test"
   },
   "license": "AGPL-3.0-only",
-  "repository": "https://github.com/Jone4865/anollim"
+  "repository": "https://github.com/Jone4865/jipkok"
 }

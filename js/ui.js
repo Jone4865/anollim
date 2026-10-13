@@ -149,7 +149,7 @@ export function sortable(container, itemSelector, onMove, { horizontal = false }
     from = items().indexOf(it);
     it.classList.add("dragging");
     e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/x-anollim", String(from));
+    e.dataTransfer.setData("text/x-jipkok", String(from));
   });
   const where = (e, it) => {
     const r = it.getBoundingClientRect();

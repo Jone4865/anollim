@@ -2,7 +2,7 @@
 import { PDFDocument, degrees } from "../vendor/pdf-lib-1.17.1.esm.min.js";
 import { layoutImage } from "./lib.js";
 
-const PRODUCER = "안올림 (anollim.vercel.app) — 브라우저 안에서 처리";
+const PRODUCER = "집콕툴 (jipkok.vercel.app) — 브라우저 안에서 처리";
 
 async function load(buf) {
   try {
@@ -15,7 +15,7 @@ async function load(buf) {
 }
 
 function fresh() {
-  return PDFDocument.create().then((d) => { d.setProducer(PRODUCER); d.setCreator("안올림"); return d; });
+  return PDFDocument.create().then((d) => { d.setProducer(PRODUCER); d.setCreator("집콕툴"); return d; });
 }
 
 async function save(doc) {
