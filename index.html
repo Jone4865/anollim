@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>집문서 — 업로드 없는 파일 도구</title>
-<meta name="description" content="PDF 합치기·나누기·회전, 이미지 압축·변환, 사진 배경 지우기, 사진 위치 정보 지우기. 모든 처리는 브라우저 안에서 끝나요. 파일이 내 컴퓨터 밖으로 나가지 않아요.">
+<meta name="description" content="PDF 합치기·나누기·회전, 이미지 압축·변환, 사진 배경 지우기, 사진 위치 정보 지우기. 모든 처리는 브라우저 안에서 끝나요. 파일을 서버로 올리지 않아요.">
 <meta name="theme-color" content="#f6f1e7">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://jipmunseo.pages.dev/">
 <meta property="og:title" content="집문서 — 업로드 없는 파일 도구">
-<meta property="og:description" content="PDF·사진 작업을 브라우저 안에서. 파일이 내 컴퓨터 밖으로 나가지 않아요.">
+<meta property="og:description" content="PDF·사진 작업을 브라우저 안에서. 파일을 서버로 올리지 않아요.">
 <meta property="og:image" content="https://jipmunseo.pages.dev/assets/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -37,7 +37,7 @@
       <div class="hero-text">
         <p class="hand hero-note">설치 ✕ · 가입 ✕ · 업로드 ✕</p>
         <h1><span class="marker">업로드 없는</span><br>파일 도구</h1>
-        <p class="lead">PDF 합치기부터 사진 배경 지우기까지, 모든 작업은 지금 보고 있는 이 브라우저 안에서 끝나요. <b>파일은 집에만 — 내 컴퓨터 밖으로 나가지 않아요.</b></p>
+        <p class="lead">PDF 합치기부터 사진 배경 지우기까지, 모든 작업은 지금 보고 있는 이 브라우저 안에서 끝나요. <b>파일은 집에만 — 어디에도 올리지 않아요.</b></p>
       </div>
       <div class="hero-desk" aria-hidden="true">
         <div class="mat mat-mini">
@@ -60,7 +60,8 @@
       <div class="note">
         <span class="tape tape-l" aria-hidden="true"></span><span class="tape tape-r" aria-hidden="true"></span>
         <h2>정말 <span class="circled" id="circ">안 올라가나요?</span></h2>
-        <p>집문서에는 파일을 받는 서버가 아예 없어요. 페이지에 <b>보안 정책(CSP)</b>을 걸어서, 브라우저가 이 사이트 말고 다른 곳으로는 데이터를 보낼 수 없게 막아두었어요. 실수로라도 파일이 나갈 길이 없어요.</p>
+        <p>집문서에는 파일을 받는 서버가 아예 없고, 이 사이트의 코드는 넣은 파일을 어디로도 보내지 않아요. 페이지에 <b>보안 정책(CSP)</b>도 걸어서, 브라우저가 데이터를 보낼 수 있는 곳을 이 사이트와 배경 지우기 모델을 받는 곳으로 좁혀 두었어요.</p>
+        <p>다만 화면 효과 스크립트(rough.js·anime.js)와 글꼴은 외부 CDN(jsDelivr·Google Fonts)에서 불러와요. 이 스크립트도 페이지 안에서 실행되니, 아래 방법으로 직접 확인해 보시는 게 가장 확실해요.</p>
         <ol class="steps">
           <li>PC에서 <kbd>F12</kbd>(맥은 <kbd>⌥⌘I</kbd>)로 개발자 도구를 열어요.</li>
           <li><b>네트워크</b> 탭을 연 채로 아무 도구에 파일을 넣어 보세요.</li>
@@ -72,6 +73,7 @@
         <p class="slip-h hand">보안 정책 메모</p>
         <dl>
           <div><dt>데이터 보낼 수 있는 곳</dt><dd>이 사이트 + 모델 받는 곳</dd></div>
+          <div><dt>밖에서 불러오는 것</dt><dd>글꼴 · 화면 효과 스크립트</dd></div>
           <div><dt>파일 받는 서버</dt><dd class="big">0개</dd></div>
           <div><dt>폼 전송</dt><dd>막음</dd></div>
           <div><dt>방문 분석 · 광고</dt><dd>없음</dd></div>
@@ -84,10 +86,10 @@
 
   <footer>
     <nav class="other-tools" id="other-tools" aria-label="다른 도구" hidden></nav>
-    <p>개인정보: 로그인 없음. 파일은 브라우저 메모리에서만 다루고 어디에도 저장·전송하지 않아요. 저장하는 데이터도 없어요.</p>
-    <p>쓴 오픈소스: pdf-lib · PDF.js · fflate · exifr · heic-to · <a href="https://github.com/imgly/background-removal-js" target="_blank" rel="noopener">@imgly/background-removal</a>(AGPL-3.0, CSP에 맞게 일부 수정) · ONNX Runtime Web · rough.js · anime.js</p>
+    <p>개인정보: 로그인 없음. 파일은 브라우저 메모리에서만 다루고, 이 사이트는 파일을 어디에도 저장·전송하지 않아요. 저장하는 데이터도 없어요. 글꼴·화면 효과 스크립트는 jsDelivr·Google Fonts 에서, 배경 지우기 모델은 IMG.LY(staticimgly.com)에서 받아요 — 받을 때 그 서버에 접속 정보(IP 등)가 남을 수 있어요.</p>
+    <p>쓴 오픈소스: pdf-lib · PDF.js · fflate · exifr · heic-to · <a href="https://github.com/imgly/background-removal-js" target="_blank" rel="noopener">@imgly/background-removal</a>(AGPL-3.0, CSP에 맞게 일부 수정) · ONNX Runtime Web · rough.js · anime.js · <a href="/licenses">라이선스 고지</a></p>
     <p>문의: <a href="mailto:cowhddnjsdl0@gmail.com">cowhddnjsdl0@gmail.com</a> · <a href="https://toon.at/donate/ggyaaaaak" target="_blank" rel="noopener">☕ 응원하기</a></p>
-    <p>집문서은 <a href="https://github.com/Jone4865/jipkok" target="_blank" rel="noopener">소스 코드가 공개</a>된 AGPL-3.0 프로젝트예요.</p>
+    <p>집문서는 <a href="https://github.com/Jone4865/jipmunseo" target="_blank" rel="noopener">소스 코드가 공개</a>된 AGPL-3.0 프로젝트예요.</p>
     <p>© 2026 집문서 · <a href="https://jone-lab.pages.dev">Jone Lab의 다른 프로젝트 보기</a></p>
   </footer>
 </div>

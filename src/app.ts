@@ -58,7 +58,7 @@ function route() {
     h("a", { class: "back", href: "#" }, h("span", { html: ICONS.back, style: "display:contents" }), "모든 도구"),
     h("div", { class: "tool-head" }, h("span", { html: art(tool.id), style: "display:contents" }),
       h("div", {}, h("h1", { id: "tool-title" }, tool.title), h("p", {}, tool.desc)),
-      h("div", { class: "head-stamp", html: stamp("stamp"), title: "파일이 밖으로 안 나가요" })),
+      h("div", { class: "head-stamp", html: stamp("stamp"), title: "이 사이트는 파일을 보내지 않아요" })),
     h("div", { class: "mat work" },
       h("p", { class: "promise" }, h("span", { html: ICONS.shield, style: "display:contents" }), "파일은 이 브라우저 안에서만 다뤄요. 어디에도 안 올라가요."),
       body)));

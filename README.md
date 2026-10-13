@@ -3,8 +3,9 @@
 https://jipmunseo.pages.dev (예전 주소 jipkok.vercel.app · anollim.vercel.app 은 새 주소로 308 이동)
 
 PDF 합치기·나누기·회전, 이미지 → PDF, 이미지 압축·변환, 사진 배경 지우기, 사진 정보(EXIF·위치) 지우기를
-**브라우저 안에서만** 처리하는 정적 사이트예요. 서버 함수가 없고, `public/_headers`(Cloudflare Pages) 의 CSP(`connect-src 'self' blob: https://staticimgly.com`)로
-파일이 다른 곳으로 나가지 못하게 막아둬요. (`staticimgly.com` 은 배경 지우기 모델 파일을 받는 곳이에요.)
+**브라우저 안에서만** 처리하는 정적 사이트예요. 서버 함수가 없고, 우리 코드는 파일을 어디로도 보내지 않아요.
+`public/_headers`(Cloudflare Pages) 의 CSP(`connect-src 'self' blob: https://staticimgly.com`)로 브라우저가 데이터를 보낼 수 있는 곳도 좁혀 둬요.
+(`staticimgly.com` 은 배경 지우기 모델 파일을 받는 곳이에요. rough.js·anime.js·글꼴은 jsDelivr·Google Fonts 에서 불러와서, 화면의 안내 문구도 "막아서 나갈 길이 없다"가 아니라 이 사실대로 적었어요.)
 
 ## 라이선스
 
@@ -18,7 +19,10 @@ PDF 합치기·나누기·회전, 이미지 → PDF, 이미지 압축·변환, �
 - 다시 만드는 방법: `dev/build-bg.sh` (패치 스크립트 `dev/patch-imgly.py`)
 
 ### 그 밖에 쓴 오픈소스 (각자의 라이선스)
-pdf-lib (MIT) · PDF.js (Apache-2.0) · fflate (MIT) · exifr (MIT) · heic-to (LGPL-3.0, CSP 빌드) · ONNX Runtime Web (MIT) · rough.js (MIT) · anime.js (MIT) — `public/vendor/` 에 그대로 들어 있어요 (Vite 가 다시 묶지 않고 `/vendor/…` 주소 그대로 배포).
+pdf-lib (MIT) · PDF.js (Apache-2.0) · fflate (MIT) · exifr (MIT) · heic-to (LGPL-3.0, CSP 빌드) · ONNX Runtime Web (MIT) — `public/vendor/` 에 그대로 들어 있어요 (Vite 가 다시 묶지 않고 `/vendor/…` 주소 그대로 배포). rough.js (MIT) · anime.js (MIT) 는 jsDelivr 에서 불러와요.
+
+- **라이선스 고지**: `public/third-party-licenses.txt` (→ `/third-party-licenses.txt`, 저작권 문구 + MIT·Apache-2.0·LGPL-3.0·GPL-3.0·AGPL-3.0 원문 전체)와
+  `public/licenses.html` (→ `/licenses`, 한국어 요약 · LGPL 원본 소스 안내). 푸터에서 링크해요. **vendor 파일을 바꾸면 두 파일도 같이 고쳐요.**
 
 ## 개발 (TypeScript + Vite)
 

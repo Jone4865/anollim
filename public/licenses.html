@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오픈소스 라이선스 — 집문서</title>
+<meta name="description" content="집문서가 함께 싣거나 불러오는 오픈소스 라이브러리와 라이선스, 원본 소스를 받는 곳을 적었어요.">
+<meta name="theme-color" content="#f6f1e7">
+<link rel="icon" href="/assets/favicon.png" type="image/png">
+<link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<style>
+  :root { --paper: #f6f1e7; --sheet: #fffdf7; --ink: #2a2622; --muted: #6f675e; --line: #d9d0c1; --acc: #2563eb; --acc-ink: #1d4ed8; --mat: #2e6a50; }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Pretendard Variable", Pretendard, -apple-system, "Noto Sans KR", "Segoe UI", "Malgun Gothic", sans-serif; line-height: 1.65; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 0 20px 56px; }
+  nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 0; }
+  nav a { color: var(--ink); text-decoration: none; display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 800; font-size: 19px; letter-spacing: -.02em; }
+  nav img { width: 34px; height: 34px; }
+  nav .back { font-weight: 600; font-size: 14px; color: var(--muted); letter-spacing: 0; }
+  .sheet { background: var(--sheet); border: 1px solid var(--line); border-top: 6px solid var(--mat); border-radius: 4px; padding: 28px 28px 24px; box-shadow: 0 1px 0 rgba(42,38,34,.06), 0 10px 24px -14px rgba(42,38,34,.35); }
+  h1 { font-size: clamp(26px, 5vw, 34px); line-height: 1.2; margin: 0 0 8px; letter-spacing: -.03em; }
+  .lead { margin: 0; color: var(--muted); }
+  .file { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 18px 0 0; padding: 12px 14px; background: #eef3fd; border-radius: 4px; }
+  .file a { font-weight: 700; color: var(--acc-ink); }
+  .file span { color: var(--muted); font-size: 14px; }
+  h2 { font-size: 18px; margin: 32px 0 6px; letter-spacing: -.02em; }
+  h2 + p { margin-top: 0; }
+  p, li, td { overflow-wrap: anywhere; }
+  a { color: var(--acc-ink); text-underline-offset: 2px; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .88em; background: #f3eee3; padding: 1px 5px; border-radius: 3px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+  th { font-weight: 700; white-space: nowrap; color: var(--muted); font-size: 13px; }
+  td .lic { display: inline-block; font-weight: 700; color: var(--mat); white-space: nowrap; }
+  td small { display: block; color: var(--muted); font-size: 12.5px; font-weight: 500; margin-top: 2px; }
+  ul { padding-left: 20px; margin: 8px 0; }
+  li { margin: 4px 0; }
+  footer { margin-top: 28px; color: var(--muted); font-size: 13px; }
+  @media (max-width: 640px) {
+    .wrap { padding: 0 16px 44px; }
+    .sheet { padding: 22px 16px 18px; }
+    table, tbody, tr, td { display: block; }
+    thead { display: none; }
+    tr { padding: 10px 0; border-bottom: 1px solid var(--line); }
+    td { border: 0; padding: 2px 0; }
+    td:first-child { font-weight: 700; font-size: 15px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a href="/"><img src="/assets/icon.svg" alt="" width="34" height="34">집문서</a>
+    <a class="back" href="/">← 도구로 돌아가기</a>
+  </nav>
+
+  <main class="sheet">
+    <h1>오픈소스 라이선스</h1>
+    <p class="lead">집문서는 아래 오픈소스 덕분에 만들 수 있었어요. 집문서 자체도 <a href="https://github.com/Jone4865/jipmunseo" target="_blank" rel="noopener">GNU AGPL-3.0 으로 소스를 공개</a>해요.</p>
+    <p class="file"><a href="/third-party-licenses.txt">전체 고지문 보기 (third-party-licenses.txt)</a><span>저작권 문구와 라이선스 원문(MIT·Apache-2.0·LGPL-3.0·GPL-3.0·AGPL-3.0)을 모두 담았어요.</span></p>
+
+    <h2>이 사이트가 함께 싣는 라이브러리</h2>
+    <p>아래 파일은 이 사이트의 <code>/vendor/</code> 에서 그대로 내려받아져요.</p>
+    <table>
+      <thead><tr><th>이름 · 버전</th><th>라이선스</th><th>어디에 쓰나요</th></tr></thead>
+      <tbody>
+        <tr><td>pdf-lib 1.17.1<small>© 2019 Andrew Dillon · 안에 pako(MIT·zlib), @pdf-lib/standard-fonts·upng(MIT), tslib(Apache-2.0)</small></td><td><span class="lic">MIT</span></td><td>PDF 합치기·나누기·회전, 이미지 → PDF</td></tr>
+        <tr><td>PDF.js 4.10.38<small>© 2024 Mozilla Foundation · cmaps·기본 글꼴은 각자 라이선스 파일 동봉</small></td><td><span class="lic">Apache-2.0</span></td><td>PDF 쪽 미리보기</td></tr>
+        <tr><td>fflate 0.8.2<small>© 2023 Arjun Barrett</small></td><td><span class="lic">MIT</span></td><td>여러 파일을 ZIP 으로 묶기</td></tr>
+        <tr><td>exifr 7.1.3<small>© 2020 Mike Kovařík, Mutiny.cz</small></td><td><span class="lic">MIT</span></td><td>사진 속 위치·카메라 정보 읽기</td></tr>
+        <tr><td>heic-to 1.5.2<small>Hopper Gee · 안에 libheif 1.22.2, libde265 1.0.16(LGPL-3.0, Struktur AG·Dirk Farin), Emscripten(MIT)</small></td><td><span class="lic">LGPL-3.0</span></td><td>아이폰 HEIC 사진 열기</td></tr>
+        <tr><td>@imgly/background-removal 1.7.0<small>IMG.LY · <b>집문서가 일부 고침</b> · 안에 onnxruntime-web 1.21.0(MIT, Microsoft), lodash-es·zod·iota-array·is-buffer(MIT)</small></td><td><span class="lic">AGPL-3.0</span></td><td>사진 배경 지우기</td></tr>
+      </tbody>
+    </table>
+
+    <h2>LGPL 라이브러리(heic-to) 안내</h2>
+    <ul>
+      <li><code>/vendor/heic-to-1.5.2-csp.mjs</code> 는 npm 의 <code>heic-to@1.5.2</code> 배포본(<code>dist/csp/heic-to.js</code>)과 똑같은 파일이에요. 고치지 않았어요.</li>
+      <li>원본 소스: <a href="https://github.com/hoppergee/heic-to" target="_blank" rel="noopener">heic-to</a> (<a href="https://registry.npmjs.org/heic-to/-/heic-to-1.5.2.tgz">1.5.2 패키지</a>) · <a href="https://github.com/strukturag/libheif/releases/tag/v1.22.2" target="_blank" rel="noopener">libheif 1.22.2</a> · <a href="https://github.com/strukturag/libde265/releases/tag/v1.0.16" target="_blank" rel="noopener">libde265 1.0.16</a></li>
+      <li>브라우저가 HEIC 사진을 스스로 못 열 때만 따로 불러오는 독립 파일이라, 집문서 소스를 받아 이 파일을 직접 고친 빌드로 바꿔 끼울 수 있어요.</li>
+    </ul>
+
+    <h2>집문서가 고친 부분</h2>
+    <p>배경 지우기 라이브러리 안의 <code>ndarray</code> 가 <code>new Function</code> 을 써서 이 사이트의 보안 정책(CSP)에 막혀요. 그 부분만 작은 대체 구현으로 바꿔 다시 묶었어요(2026-10-13). 바꾼 코드와 다시 만드는 방법은 <a href="https://github.com/Jone4865/jipmunseo" target="_blank" rel="noopener">소스 저장소</a>의 <code>dev/</code> 에 있어요.</p>
+
+    <h2>브라우저가 다른 곳에서 불러오는 것</h2>
+    <p>아래는 이 사이트가 싣지 않고, 브라우저가 해당 서버에서 직접 받아요.</p>
+    <ul>
+      <li>rough.js 4.6.6 (MIT, © 2019 Preet Shihn) · anime.js 3.2.2 (MIT, © 2019 Julian Garnier) — 화면 효과, jsDelivr</li>
+      <li>Pretendard (SIL OFL 1.1) — jsDelivr · Gaegu (SIL OFL 1.1) — Google Fonts</li>
+      <li>배경 지우기 AI 모델·실행 파일 — IMG.LY(staticimgly.com), 배경 지우기를 처음 쓸 때 한 번 받아요. 사진은 보내지 않아요.</li>
+    </ul>
+  </main>
+
+  <footer>
+    <p>문의 <a href="mailto:cowhddnjsdl0@gmail.com">cowhddnjsdl0@gmail.com</a> · © 2026 집문서 · <a href="https://jone-lab.pages.dev">Jone Lab의 다른 프로젝트 보기</a></p>
+  </footer>
+</div>
+</body>
+</html>
