@@ -1,6 +1,6 @@
 # 집문서 — 업로드 없는 파일 도구
 
-https://jipmunseo.vercel.app (예전 주소 jipkok.vercel.app · anollim.vercel.app 은 새 주소로 308 이동)
+https://jipmunseo.pages.dev (예전 주소 jipkok.vercel.app · anollim.vercel.app 은 새 주소로 308 이동)
 
 PDF 합치기·나누기·회전, 이미지 → PDF, 이미지 압축·변환, 사진 배경 지우기, 사진 정보(EXIF·위치) 지우기를
 **브라우저 안에서만** 처리하는 정적 사이트예요. 서버 함수가 없고, `vercel.json` 의 CSP(`connect-src 'self' blob: https://staticimgly.com`)로
@@ -27,4 +27,4 @@ node dev/serve.mjs     # 로컬 확인 (vercel.json 과 같은 CSP)
 npm test               # 단위 테스트
 ```
 
-문의: cowhddnjsdl0@gmail.com · Jone Lab: https://jone-lab.vercel.app
+문의: cowhddnjsdl0@gmail.com · Jone Lab: https://jone-lab.pages.dev

@@ -2,7 +2,7 @@
 import { PDFDocument, degrees } from "../vendor/pdf-lib-1.17.1.esm.min.js";
 import { layoutImage } from "./lib.js";
 
-const PRODUCER = "집문서 (jipmunseo.vercel.app) — 브라우저 안에서 처리";
+const PRODUCER = "집문서 (jipmunseo.pages.dev) — 브라우저 안에서 처리";
 
 async function load(buf) {
   try {

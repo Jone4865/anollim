@@ -31,6 +31,6 @@ og = f'''<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewB
 <text x="72" y="458" {F} font-weight="600" font-size="28" fill="#6f675e">배경 지우기 · 위치 정보 지우기</text>
 <g transform="translate(1085,538) rotate(-14) scale(.72)" filter="url(#pen)" fill="none" stroke="#2563eb"><circle r="78" stroke-width="7"/><circle r="64" stroke-width="3"/>
 <text y="16" text-anchor="middle" {F} font-weight="900" font-size="40" fill="#2563eb" stroke="none" letter-spacing="-2">안 나감</text></g>
-<text x="72" y="572" {F} font-size="22" fill="#6f675e">jipmunseo.vercel.app · 파일이 밖으로 안 나가요</text>
+<text x="72" y="572" {F} font-size="22" fill="#6f675e">jipmunseo.pages.dev · 파일이 밖으로 안 나가요</text>
 </svg>'''
 open('og.svg', 'w').write(og)
