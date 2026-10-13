@@ -1,13 +1,19 @@
 // PDF 도구: 합치기 / 나누기·페이지 빼기 / 회전·순서
 import { h, ICONS, icon, iconBtn, dropzone, progress, alertBox, errMsg, resultBox, resultItem, sortable, seg, filterFiles, LIMITS, runPdf, openPdfjs, thumbRenderer, makeZip, toast } from "./ui.js";
 import { formatSize, outName, moveItem, parseRanges, rangesToSet, formatRanges, uniqueNames, baseName, safeName, normRotation } from "./lib.js";
+import type { ThumbRenderer } from "./ui.js";
+import type { PdfjsDocument } from "./vendor.js";
+import type { Mounted } from "./app.js";
 
-const pdfBlob = (bytes) => new Blob([bytes], { type: "application/pdf" });
-const sumPages = (list) => list.reduce((a, f) => a + (f.pages || 0), 0);
+type Bytes = Uint8Array<ArrayBuffer>;
+/** 열어 둔 PDF 하나 */
+interface Opened { file: File; buf: ArrayBuffer; doc: PdfjsDocument; pages: number; renderer: ThumbRenderer }
+const pdfBlob = (bytes: Bytes) => new Blob([bytes], { type: "application/pdf" });
+const sumPages = (list: { pages: number | null }[]) => list.reduce((a, f) => a + (f.pages || 0), 0);
 
 /* ═════════ 1. PDF 합치기 ═════════ */
-export function mountMerge(root) {
-  let files = []; // {id, file, pages, error}
+export function mountMerge(root: HTMLElement): Mounted {
+  let files: { id: number; file: File; pages: number | null; error: string | null }[] = []; // {id, file, pages, error}
   let uid = 0;
   const err = alertBox();
   const prog = progress();
@@ -25,16 +31,16 @@ export function mountMerge(root) {
   root.append(dz, err.el, panel, h("div", { class: "actions" }, go), prog.el, out);
   sortable(listEl, ".fitem", (a, b) => { files = moveItem(files, a, b); render(); });
 
-  async function add(list) {
+  async function add(list: File[]): Promise<void> {
     err.hide();
     const ok = filterFiles(list, ["pdf"], LIMITS.pdfFile, (m) => err.show(m));
     for (const file of ok) {
-      const it = { id: ++uid, file, pages: null, error: null };
+      const it: (typeof files)[number] = { id: ++uid, file, pages: null, error: null };
       files.push(it);
       render();
       try {
         const buf = await file.arrayBuffer();
-        it.pages = (await runPdf("count", { buf }, [buf])).pages;
+        it.pages = (await runPdf<{ pages: number }>("count", { buf }, [buf])).pages;
       } catch (e) { it.error = errMsg(e); }
       render();
     }
@@ -68,12 +74,12 @@ export function mountMerge(root) {
     try {
       prog.set(0, "파일 읽는 중…");
       const bufs = await Promise.all(good.map((f) => f.file.arrayBuffer()));
-      const { bytes } = await runPdf("merge", { bufs }, bufs, (d, t) => prog.set(d / t * 0.9, `${d}/${t} 합치는 중…`));
+      const { bytes } = await runPdf<{ bytes: Bytes }>("merge", { bufs }, bufs, (d, t) => prog.set(d / t * 0.9, `${d}/${t} 합치는 중…`));
       prog.set(1, "완료!");
       const name = outName(good[0].file.name, "합침", "pdf");
       const blob = pdfBlob(bytes);
       out.replaceChildren(h("div", { class: "result", id: "result" }, h("h2", {}, icon("ok"), `${sumPages(good)}쪽짜리 PDF가 만들어졌어요`), resultItem({ name, blob, extra: `${good.length}개 파일 합침` })));
-      out.querySelector("button.primary")?.focus();
+      out.querySelector<HTMLButtonElement>("button.primary")?.focus();
     } catch (e) { err.show(errMsg(e)); }
     finally { setTimeout(() => prog.hide(), 800); render(); }
   }
@@ -82,7 +88,7 @@ export function mountMerge(root) {
 }
 
 /* ═════════ PDF 하나를 열어 썸네일 격자 만드는 공통부 ═════════ */
-async function openOne(file, prog) {
+async function openOne(file: File, prog: ReturnType<typeof progress>) {
   prog.set(null, "PDF 여는 중…");
   const buf = await file.arrayBuffer();
   const doc = await openPdfjs(buf.slice(0));
@@ -90,11 +96,12 @@ async function openOne(file, prog) {
 }
 
 /* ═════════ 2. 나누기 / 페이지 빼기 ═════════ */
-export function mountSplit(root) {
-  let cur = null; // {file, buf, doc, pages, renderer}
+export function mountSplit(root: HTMLElement): Mounted {
+  let cur: Opened | null = null; // {file, buf, doc, pages, renderer}
+  const C = () => cur as Opened; // PDF 를 연 뒤에만 불림
   let mode = "pick"; // pick | each | ranges
   let keep = "keep"; // keep | remove
-  let sel = new Set();
+  let sel = new Set<number>();
   const err = alertBox();
   const prog = progress();
   const out = h("div");
@@ -109,7 +116,7 @@ export function mountSplit(root) {
   const rangeIn = h("input", { class: "input", type: "text", inputmode: "text", placeholder: "예) 1-3, 5, 8-10", "aria-label": "페이지 범위", autocomplete: "off" });
   const rangeHint = h("div", { class: "hint" });
   const selInfo = h("span", { class: "muted" });
-  const allBtn = h("button", { type: "button", class: "btn sm", onclick: () => { sel = new Set([...Array(cur.pages).keys()]); syncSel(true); } }, "전체 선택");
+  const allBtn = h("button", { type: "button", class: "btn sm", onclick: () => { sel = new Set([...Array(C().pages).keys()]); syncSel(true); } }, "전체 선택");
   const noneBtn = h("button", { type: "button", class: "btn sm", onclick: () => { sel.clear(); syncSel(true); } }, "선택 해제");
   const pickTools = h("div", { class: "row" }, selInfo, allBtn, noneBtn);
   const go = h("button", { type: "button", class: "btn primary big", onclick: run }, "만들기");
@@ -127,7 +134,7 @@ export function mountSplit(root) {
 
   rangeIn.addEventListener("input", () => {
     if (mode === "pick") {
-      try { sel = new Set(rangesToSet(parseRanges(rangeIn.value, cur.pages))); rangeHint.className = "hint"; syncSel(false); }
+      try { sel = new Set(rangesToSet(parseRanges(rangeIn.value, C().pages))); rangeHint.className = "hint"; syncSel(false); }
       catch (e) { if (rangeIn.value.trim()) { rangeHint.className = "hint bad"; rangeHint.textContent = errMsg(e); } else { sel.clear(); syncSel(false); } }
     } else update();
   });
@@ -137,7 +144,7 @@ export function mountSplit(root) {
     work.hidden = true; dz.hidden = false; rangeIn.value = "";
   }
 
-  async function load(file) {
+  async function load(file: File): Promise<void> {
     err.hide(); out.replaceChildren();
     if (!filterFiles([file], ["pdf"], LIMITS.pdfFile, (m) => err.show(m)).length) return;
     reset();
@@ -145,15 +152,15 @@ export function mountSplit(root) {
       const o = await openOne(file, prog);
       cur = { file, ...o, renderer: thumbRenderer(o.doc) };
       dz.hidden = true; work.hidden = false;
-      fileLine.replaceChildren(h("b", { style: "color:var(--text)" }, file.name), ` · ${cur.pages}쪽 · ${formatSize(file.size)}`);
-      grid.replaceChildren(...Array.from({ length: cur.pages }, (_, i) => {
+      fileLine.replaceChildren(h("b", { style: "color:var(--text)" }, file.name), ` · ${C().pages}쪽 · ${formatSize(file.size)}`);
+      grid.replaceChildren(...Array.from({ length: C().pages }, (_, i) => {
         const box = h("div", { class: "tbox", dataset: { page: i } }, h("div", { class: "ph" }));
         const card = h("div", { class: "thumb", dataset: { i }, role: "checkbox", "aria-checked": "false", tabindex: "0", "aria-label": `${i + 1}쪽` },
           h("span", { class: "check", html: ICONS.check }), box, h("div", { class: "tlabel" }, h("b", {}, `${i + 1}쪽`)));
         const toggle = () => { if (mode !== "pick") return; sel.has(i) ? sel.delete(i) : sel.add(i); syncSel(true); };
         card.addEventListener("click", toggle);
         card.addEventListener("keydown", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); } });
-        cur.renderer.observe(box);
+        C().renderer.observe(box);
         return card;
       }));
       update();
@@ -161,14 +168,14 @@ export function mountSplit(root) {
     finally { prog.hide(); }
   }
 
-  function syncSel(writeInput) {
-    grid.querySelectorAll(".thumb").forEach((c) => { const on = sel.has(Number(c.dataset.i)); c.classList.toggle("sel", on); c.setAttribute("aria-checked", String(on)); });
+  function syncSel(writeInput: boolean): void {
+    grid.querySelectorAll<HTMLElement>(".thumb").forEach((c) => { const on = sel.has(Number(c.dataset.i)); c.classList.toggle("sel", on); c.setAttribute("aria-checked", String(on)); });
     if (writeInput) { rangeIn.value = formatRanges([...sel]); rangeHint.className = "hint"; }
     update();
   }
 
   function groupsForRanges() {
-    return parseRanges(rangeIn.value, cur.pages);
+    return parseRanges(rangeIn.value, C().pages);
   }
 
   function update() {
@@ -184,17 +191,17 @@ export function mountSplit(root) {
     selInfo.textContent = `${sel.size}쪽 고름`;
     if (pick) {
       if (rangeHint.className !== "hint bad") rangeHint.textContent = "썸네일을 누르거나 범위를 적어서 고르세요.";
-      const n = keep === "keep" ? sel.size : cur.pages - sel.size;
+      const n = keep === "keep" ? sel.size : C().pages - sel.size;
       go.disabled = !sel.size || n < 1;
       go.textContent = !sel.size ? "페이지를 골라 주세요" : n < 1 ? "모든 쪽을 지울 순 없어요" : keep === "keep" ? `${sel.size}쪽으로 새 PDF 만들기` : `${sel.size}쪽 지우고 저장 (${n}쪽 남음)`;
     } else if (mode === "each") {
-      go.disabled = cur.pages < 2;
-      go.textContent = cur.pages < 2 ? "1쪽짜리는 나눌 게 없어요" : `${cur.pages}개 파일로 나누기`;
+      go.disabled = C().pages < 2;
+      go.textContent = C().pages < 2 ? "1쪽짜리는 나눌 게 없어요" : `${C().pages}개 파일로 나누기`;
     } else {
       try {
         const g = groupsForRanges();
         rangeHint.className = "hint";
-        rangeHint.textContent = `파일 ${g.length}개: ` + g.map((x) => x.length === 1 ? `${x[0] + 1}쪽` : `${x[0] + 1}-${x.at(-1) + 1}쪽`).join(", ");
+        rangeHint.textContent = `파일 ${g.length}개: ` + g.map((x) => x.length === 1 ? `${x[0] + 1}쪽` : `${x[0] + 1}-${(x.at(-1) as number) + 1}쪽`).join(", ");
         go.disabled = false; go.textContent = `${g.length}개 파일로 나누기`;
       } catch (e) {
         rangeHint.className = rangeIn.value.trim() ? "hint bad" : "hint";
@@ -203,29 +210,29 @@ export function mountSplit(root) {
       }
     }
   }
-  function syncSelClasses() { grid.querySelectorAll(".thumb").forEach((c) => c.classList.toggle("sel", sel.has(Number(c.dataset.i)))); }
+  function syncSelClasses() { grid.querySelectorAll<HTMLElement>(".thumb").forEach((c) => c.classList.toggle("sel", sel.has(Number(c.dataset.i)))); }
 
   async function run() {
     err.hide(); out.replaceChildren(); go.disabled = true;
-    const base = safeName(baseName(cur.file.name));
+    const base = safeName(baseName(C().file.name));
     try {
       if (mode === "pick") {
         const chosen = [...sel].sort((a, b) => a - b);
-        const pages = keep === "keep" ? chosen : [...Array(cur.pages).keys()].filter((i) => !sel.has(i));
+        const pages = keep === "keep" ? chosen : [...Array(C().pages).keys()].filter((i) => !sel.has(i));
         prog.set(null, "새 PDF 만드는 중…");
-        const buf = cur.buf.slice(0);
-        const { bytes } = await runPdf("pick", { buf, pages }, [buf]);
-        const name = outName(cur.file.name, keep === "keep" ? `${formatRanges(chosen).replace(/\s/g, "")}쪽` : "페이지삭제", "pdf");
+        const buf = C().buf.slice(0);
+        const { bytes } = await runPdf<{ bytes: Bytes }>("pick", { buf, pages }, [buf]);
+        const name = outName(C().file.name, keep === "keep" ? `${formatRanges(chosen).replace(/\s/g, "")}쪽` : "페이지삭제", "pdf");
         out.replaceChildren(h("div", { class: "result", id: "result" }, h("h2", {}, icon("ok"), `${pages.length}쪽짜리 PDF가 만들어졌어요`), resultItem({ name, blob: pdfBlob(bytes) })));
       } else {
-        const groups = mode === "each" ? [...Array(cur.pages).keys()].map((i) => [i]) : groupsForRanges();
-        const pad = String(cur.pages).length;
+        const groups = mode === "each" ? [...Array(C().pages).keys()].map((i) => [i]) : groupsForRanges();
+        const pad = String(C().pages).length;
         const names = uniqueNames(groups.map((g) => {
-          const a = g[0] + 1, b = g.at(-1) + 1;
+          const a = g[0] + 1, b = (g.at(-1) as number) + 1;
           return mode === "each" ? `${base}-${String(a).padStart(pad, "0")}쪽.pdf` : `${base}-${a === b ? a : `${a}-${b}`}쪽.pdf`;
         }));
-        const buf = cur.buf.slice(0);
-        const { files } = await runPdf("split", { buf, groups }, [buf], (d, t) => prog.set(d / t * 0.9, `${d}/${t} 나누는 중…`));
+        const buf = C().buf.slice(0);
+        const { files } = await runPdf<{ files: Bytes[] }>("split", { buf, groups }, [buf], (d, t) => prog.set(d / t * 0.9, `${d}/${t} 나누는 중…`));
         const items = files.map((b, i) => ({ name: names[i], blob: pdfBlob(b) }));
         prog.set(0.95, "ZIP으로 묶는 중…");
         const zip = await makeZip(items);
@@ -245,10 +252,11 @@ export function mountSplit(root) {
 }
 
 /* ═════════ 3. 회전 · 순서 바꾸기 · 삭제 ═════════ */
-export function mountOrganize(root) {
-  let cur = null;
-  let items = []; // {idx, rot}
-  const thumbsByIdx = new Map(); // idx → tbox element (캔버스 재사용)
+export function mountOrganize(root: HTMLElement): Mounted {
+  let cur: Opened | null = null;
+  const C = () => cur as Opened; // PDF 를 연 뒤에만 불림
+  let items: { idx: number; rot: number }[] = []; // {idx, rot}
+  const thumbsByIdx = new Map<number, HTMLElement>(); // idx → tbox element (캔버스 재사용)
   const err = alertBox();
   const prog = progress();
   const out = h("div");
@@ -263,7 +271,7 @@ export function mountOrganize(root) {
       h("div", { class: "row" },
         h("button", { type: "button", class: "btn sm", onclick: () => { items.forEach((it) => (it.rot = normRotation(it.rot - 90))); render(); } }, icon("rotL"), "모두 왼쪽으로"),
         h("button", { type: "button", class: "btn sm", onclick: () => { items.forEach((it) => (it.rot = normRotation(it.rot + 90))); render(); } }, icon("rotR"), "모두 오른쪽으로"),
-        h("button", { type: "button", class: "btn sm ghost", onclick: () => { items = [...Array(cur.pages).keys()].map((idx) => ({ idx, rot: 0 })); render(); toast("처음 상태로 되돌렸어요"); } }, "처음 상태로"))),
+        h("button", { type: "button", class: "btn sm ghost", onclick: () => { items = [...Array(C().pages).keys()].map((idx) => ({ idx, rot: 0 })); render(); toast("처음 상태로 되돌렸어요"); } }, "처음 상태로"))),
     h("div", { class: "panel" }, h("div", { class: "panel-head" }, h("h2", {}, "페이지"), info),
       h("p", { class: "hint", style: "margin:-6px 0 10px" }, "썸네일을 끌어서 순서를 바꾸거나, 아래 버튼으로 돌리기 · 옮기기 · 지우기를 할 수 있어요."), grid),
     h("div", { class: "actions" }, go));
@@ -274,21 +282,21 @@ export function mountOrganize(root) {
     cur?.renderer.destroy(); cur = null; items = []; thumbsByIdx.clear(); out.replaceChildren(); err.hide();
     work.hidden = true; dz.hidden = false;
   }
-  async function load(file) {
+  async function load(file: File): Promise<void> {
     err.hide(); out.replaceChildren();
     if (!filterFiles([file], ["pdf"], LIMITS.pdfFile, (m) => err.show(m)).length) return;
     reset();
     try {
       const o = await openOne(file, prog);
       cur = { file, ...o, renderer: thumbRenderer(o.doc) };
-      items = [...Array(cur.pages).keys()].map((idx) => ({ idx, rot: 0 }));
+      items = [...Array(C().pages).keys()].map((idx) => ({ idx, rot: 0 }));
       for (const it of items) {
         const box = h("div", { class: "tbox", dataset: { page: it.idx } }, h("div", { class: "ph" }));
         thumbsByIdx.set(it.idx, box);
-        cur.renderer.observe(box);
+        C().renderer.observe(box);
       }
       dz.hidden = true; work.hidden = false;
-      fileLine.replaceChildren(h("b", { style: "color:var(--text)" }, file.name), ` · ${cur.pages}쪽 · ${formatSize(file.size)}`);
+      fileLine.replaceChildren(h("b", { style: "color:var(--text)" }, file.name), ` · ${C().pages}쪽 · ${formatSize(file.size)}`);
       render();
     } catch (e) { err.show(errMsg(e)); reset(); }
     finally { prog.hide(); }
@@ -296,11 +304,11 @@ export function mountOrganize(root) {
   function render() {
     const n = items.length;
     grid.replaceChildren(...items.map((it, i) => {
-      const box = thumbsByIdx.get(it.idx);
+      const box = thumbsByIdx.get(it.idx) as HTMLElement;
       // 같은 페이지 썸네일 박스를 재사용 (복제 시 두 번째부터는 사본)
       box.style.setProperty("--rot", it.rot + "deg");
       const inner = box.firstElementChild;
-      if (inner && inner.tagName !== "DIV") inner.style.transform = `rotate(${it.rot}deg) scale(${it.rot % 180 ? 0.75 : 1})`;
+      if (inner && inner.tagName !== "DIV") (inner as HTMLElement).style.transform = `rotate(${it.rot}deg) scale(${it.rot % 180 ? 0.75 : 1})`;
       return h("div", { class: "thumb", draggable: "true", dataset: { i } },
         it.rot ? h("span", { class: "rot-badge" }, `${it.rot}°`) : null,
         box,
@@ -313,10 +321,10 @@ export function mountOrganize(root) {
           iconBtn("x", "이 쪽 지우기", () => { if (items.length === 1) return toast("마지막 한 쪽은 지울 수 없어요"); items.splice(i, 1); render(); }, "danger")));
     }));
     grid.querySelectorAll(".thumb").forEach((t, i) => {
-      if (i === 0) t.querySelector('[aria-label="앞으로"]').disabled = true;
-      if (i === n - 1) t.querySelector('[aria-label="뒤로"]').disabled = true;
+      if (i === 0) (t.querySelector('[aria-label="앞으로"]') as HTMLButtonElement).disabled = true;
+      if (i === n - 1) (t.querySelector('[aria-label="뒤로"]') as HTMLButtonElement).disabled = true;
     });
-    const removed = cur ? cur.pages - n : 0;
+    const removed = cur ? C().pages - n : 0;
     const rotated = items.filter((x) => x.rot).length;
     const moved = items.some((x, i) => x.idx !== i);
     info.textContent = `${n}쪽` + (removed ? ` · ${removed}쪽 지움` : "") + (rotated ? ` · ${rotated}쪽 돌림` : "") + (moved ? " · 순서 바뀜" : "");
@@ -325,8 +333,9 @@ export function mountOrganize(root) {
   }
   // 썸네일이 늦게 그려지면 회전 다시 적용
   grid.addEventListener("rendered", (e) => {
-    const it = items.find((x) => x.idx === Number(e.target.dataset.page));
-    const c = e.target.firstElementChild;
+    const target = e.target as HTMLElement;
+    const it = items.find((x) => x.idx === Number(target.dataset.page));
+    const c = target.firstElementChild as HTMLElement | null;
     if (it && c) c.style.transform = `rotate(${it.rot}deg) scale(${it.rot % 180 ? 0.75 : 1})`;
   }, true);
 
@@ -334,10 +343,10 @@ export function mountOrganize(root) {
     err.hide(); out.replaceChildren(); go.disabled = true;
     try {
       prog.set(null, "저장하는 중…");
-      const buf = cur.buf.slice(0);
-      const { bytes } = await runPdf("organize", { buf, items: items.map((x) => ({ idx: x.idx, rot: x.rot })) }, [buf]);
+      const buf = C().buf.slice(0);
+      const { bytes } = await runPdf<{ bytes: Bytes }>("organize", { buf, items: items.map((x) => ({ idx: x.idx, rot: x.rot })) }, [buf]);
       prog.set(1, "완료!");
-      out.replaceChildren(h("div", { class: "result", id: "result" }, h("h2", {}, icon("ok"), `${items.length}쪽짜리 PDF로 저장했어요`), resultItem({ name: outName(cur.file.name, "편집", "pdf"), blob: pdfBlob(bytes) })));
+      out.replaceChildren(h("div", { class: "result", id: "result" }, h("h2", {}, icon("ok"), `${items.length}쪽짜리 PDF로 저장했어요`), resultItem({ name: outName(C().file.name, "편집", "pdf"), blob: pdfBlob(bytes) })));
     } catch (e) { err.show(errMsg(e)); }
     finally { setTimeout(() => prog.hide(), 800); render(); }
   }

@@ -1,9 +1,9 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import {
   parseRanges, rangesToSet, formatRanges, formatSize, savedPercent, baseName, safeName,
   outName, uniqueNames, moveItem, fitWithin, normRotation, extFor, kindOf, layoutImage, mmToPt, formatCoord,
-} from "../js/lib.js";
+} from "../src/lib.js";
 
 test("parseRanges: 기본", () => {
   assert.deepEqual(parseRanges("1-3, 5, 8-10", 10), [[0, 1, 2], [4], [7, 8, 9]]);

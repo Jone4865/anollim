@@ -3,7 +3,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.worker.json",
+    "deploy": "vite build && npx --yes wrangler@4 pages deploy dist --project-name jipmunseo --branch main"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "typescript": "7.0.2",
+    "vite": "8.3.4",
+    "vitest": "5.0.4"
   },
   "license": "AGPL-3.0-only",
   "repository": "https://github.com/Jone4865/jipkok"

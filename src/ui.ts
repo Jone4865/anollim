@@ -1,18 +1,22 @@
 // 공통 UI 조각 + 라이브러리 로더
 import { formatSize, kindOf, moveItem } from "./lib.js";
+import { vendorImport, type PdfjsModule, type PdfjsDocument, type HeicToModule, type FflateModule, type ZipInput } from "./vendor.js";
 
 /* ───── DOM 도우미 ───── */
-export function h(tag, attrs, ...kids) {
+/** h() 속성: class · html · on<이벤트> · dataset · 그 밖의 속성(true 면 빈 값, null/false 면 생략) */
+export type Attrs = Record<string, unknown>;
+export type Kid = Node | string | number | null | undefined | false | Kid[];
+export function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs?: Attrs | null, ...kids: Kid[]): HTMLElementTagNameMap[K] {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
     if (v == null || v === false) continue;
-    if (k === "class") el.className = v;
-    else if (k === "html") el.innerHTML = v;
-    else if (k.startsWith("on")) el.addEventListener(k.slice(2).toLowerCase(), v);
+    if (k === "class") el.className = v as string;
+    else if (k === "html") el.innerHTML = v as string;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2).toLowerCase(), v as EventListener);
     else if (k === "dataset") Object.assign(el.dataset, v);
-    else el.setAttribute(k, v === true ? "" : v);
+    else el.setAttribute(k, v === true ? "" : (v as string));
   }
-  for (const kid of kids.flat()) {
+  for (const kid of (kids as unknown[]).flat()) {
     if (kid == null || kid === false) continue;
     el.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
   }
@@ -20,7 +24,7 @@ export function h(tag, attrs, ...kids) {
 }
 
 const P = 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
-export const ICONS = {
+export const ICONS: Record<string, string> = {
   up: `<svg viewBox="0 0 24 24" ${P}><path d="M12 19V5M6 11l6-6 6 6"/></svg>`,
   down: `<svg viewBox="0 0 24 24" ${P}><path d="M12 5v14M6 13l6 6 6-6"/></svg>`,
   left: `<svg viewBox="0 0 24 24" ${P}><path d="M19 12H5M11 6l-6 6 6 6"/></svg>`,
@@ -36,15 +40,15 @@ export const ICONS = {
   shield: `<svg viewBox="0 0 24 24" ${P}><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>`,
   back: `<svg viewBox="0 0 24 24" ${P} width="16" height="16"><path d="M15 6l-6 6 6 6"/></svg>`,
 };
-export const icon = (name) => h("span", { html: ICONS[name], style: "display:contents" });
-export function iconBtn(name, label, onClick, extra = "") {
+export const icon = (name: string) => h("span", { html: ICONS[name], style: "display:contents" });
+export function iconBtn(name: string, label: string, onClick: (e: MouseEvent) => void, extra = ""): HTMLButtonElement {
   return h("button", { type: "button", class: `icon-btn ${extra}`, title: label, "aria-label": label, html: ICONS[name], onclick: onClick });
 }
 
 /* ───── 토스트 ───── */
-let toastTimer;
-export function toast(msg) {
-  const t = document.getElementById("toast");
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
+export function toast(msg: string): void {
+  const t = document.getElementById("toast") as HTMLElement;
   t.textContent = msg;
   t.classList.add("show");
   clearTimeout(toastTimer);
@@ -53,34 +57,35 @@ export function toast(msg) {
 
 /* ───── 드롭존 ───── */
 // accept: input accept 문자열, filter(file) → true 면 받음. compact 는 파일이 들어온 뒤 작게.
-export function dropzone({ accept, multiple = true, title, sub, onFiles }) {
+export type Dropzone = HTMLDivElement & { setCompact(on: boolean, label?: string): void };
+export function dropzone({ accept, multiple = true, title, sub, onFiles }: { accept: string; multiple?: boolean; title: string; sub: string; onFiles: (files: File[]) => void }): Dropzone {
   const input = h("input", { type: "file", accept, multiple: multiple || null, tabindex: "-1", "aria-hidden": "true" });
   const el = h("div", { class: "drop", tabindex: "0", role: "button", "aria-label": title },
     h("span", { html: ICONS.upload, style: "display:contents" }),
     h("div", { class: "drop-title" }, title),
     h("div", { class: "drop-sub" }, sub),
-    input);
+    input) as Dropzone;
   const pick = () => input.click();
   el.addEventListener("click", (e) => { if (e.target !== input) pick(); });
   el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
-  input.addEventListener("change", () => { const fs = [...input.files]; input.value = ""; if (fs.length) onFiles(fs); });
+  input.addEventListener("change", () => { const fs = [...(input.files as FileList)]; input.value = ""; if (fs.length) onFiles(fs); });
   let depth = 0;
   el.addEventListener("dragenter", (e) => { if (hasFiles(e)) { e.preventDefault(); depth++; el.classList.add("over"); } });
-  el.addEventListener("dragover", (e) => { if (hasFiles(e)) { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; } });
+  el.addEventListener("dragover", (e) => { if (hasFiles(e)) { e.preventDefault(); (e.dataTransfer as DataTransfer).dropEffect = "copy"; } });
   el.addEventListener("dragleave", () => { depth = Math.max(0, depth - 1); if (!depth) el.classList.remove("over"); });
   el.addEventListener("drop", (e) => {
     if (!hasFiles(e)) return;
     e.preventDefault(); depth = 0; el.classList.remove("over");
-    const fs = [...e.dataTransfer.files];
+    const fs = [...(e.dataTransfer as DataTransfer).files];
     if (fs.length) onFiles(multiple ? fs : fs.slice(0, 1));
   });
   el.setCompact = (on, label) => {
     el.classList.toggle("compact", on);
-    el.querySelector(".drop-title").textContent = on ? (label || "파일 더 넣기") : title;
+    (el.querySelector(".drop-title") as HTMLElement).textContent = on ? (label || "파일 더 넣기") : title;
   };
   return el;
 }
-const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes("Files");
+const hasFiles = (e: DragEvent) => [...(e.dataTransfer?.types || [])].includes("Files");
 
 /* ───── 진행 표시 ───── */
 export function progress() {
@@ -90,11 +95,11 @@ export function progress() {
   const el = h("div", { class: "progress", hidden: true, role: "progressbar", "aria-valuemin": "0", "aria-valuemax": "100" }, bar, text);
   return {
     el,
-    set(frac, msg) {
+    set(frac?: number | null, msg?: string | null) {
       el.hidden = false;
       const indet = frac == null;
       bar.classList.toggle("indet", indet);
-      if (!indet) { const p = Math.round(Math.max(0, Math.min(1, frac)) * 100); fill.style.width = p + "%"; el.setAttribute("aria-valuenow", p); }
+      if (!indet) { const p = Math.round(Math.max(0, Math.min(1, frac)) * 100); fill.style.width = p + "%"; el.setAttribute("aria-valuenow", String(p)); }
       if (msg != null) text.textContent = msg;
     },
     hide() { el.hidden = true; fill.style.width = "0"; },
@@ -106,14 +111,14 @@ export function alertBox() {
   const el = h("div", { class: "alert", hidden: true, role: "alert" });
   return {
     el,
-    show(msg, kind = "") { el.className = `alert ${kind}`; el.textContent = msg; el.hidden = false; },
+    show(msg: string, kind = "") { el.className = `alert ${kind}`; el.textContent = msg; el.hidden = false; },
     hide() { el.hidden = true; },
   };
 }
-export const errMsg = (e) => (e && e.message) || String(e || "알 수 없는 문제가 생겼어요.");
+export const errMsg = (e: unknown): string => (e ? (e as Error).message : "") || String(e || "알 수 없는 문제가 생겼어요.");
 
 /* ───── 내려받기 ───── */
-export function download(blob, name) {
+export function download(blob: Blob, name: string): void {
   const url = URL.createObjectURL(blob);
   const a = h("a", { href: url, download: name, style: "display:none" });
   document.body.append(a);
@@ -123,7 +128,7 @@ export function download(blob, name) {
 }
 
 /** 결과 한 줄: 이름, 크기, (부가정보), 내려받기 버튼 */
-export function resultItem({ name, blob, extra, thumb }) {
+export function resultItem({ name, blob, extra, thumb }: { name: string; blob: Blob; extra?: Kid; thumb?: Node | null }): HTMLDivElement {
   const btn = h("button", { type: "button", class: "btn sm primary", onclick: () => download(blob, name) }, icon("dl"), "내려받기");
   btn.dataset.name = name;
   return h("div", { class: "ritem" },
@@ -132,32 +137,33 @@ export function resultItem({ name, blob, extra, thumb }) {
     btn);
 }
 
-export function resultBox(title) {
+export function resultBox(title: string): HTMLDivElement {
   const box = h("div", { class: "result" }, h("h2", {}, icon("ok"), title));
   // 테스트·자동화를 위해 마지막 결과를 남겨둬요 (전송 아님)
   return box;
 }
 
 /* ───── 드래그로 순서 바꾸기 (데스크톱). 휴대폰은 버튼으로 ───── */
-export function sortable(container, itemSelector, onMove, { horizontal = false } = {}) {
+export function sortable(container: HTMLElement, itemSelector: string, onMove: (from: number, to: number) => void, { horizontal = false } = {}): void {
   let from = -1;
-  const items = () => [...container.querySelectorAll(itemSelector)];
+  const items = () => [...container.querySelectorAll<HTMLElement>(itemSelector)];
   const clear = () => items().forEach((x) => x.classList.remove("drop-before", "drop-after", "dragging"));
   container.addEventListener("dragstart", (e) => {
-    const it = e.target.closest(itemSelector);
+    const it = (e.target as Element).closest<HTMLElement>(itemSelector);
     if (!it) return;
     from = items().indexOf(it);
     it.classList.add("dragging");
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/x-jipkok", String(from));
+    const dt = e.dataTransfer as DataTransfer;
+    dt.effectAllowed = "move";
+    dt.setData("text/x-jipkok", String(from));
   });
-  const where = (e, it) => {
+  const where = (e: DragEvent, it: Element) => {
     const r = it.getBoundingClientRect();
     return horizontal ? (e.clientX - r.left > r.width / 2) : (e.clientY - r.top > r.height / 2);
   };
   container.addEventListener("dragover", (e) => {
     if (from < 0) return;
-    const it = e.target.closest(itemSelector);
+    const it = (e.target as Element).closest(itemSelector);
     if (!it) return;
     e.preventDefault();
     items().forEach((x) => x.classList.remove("drop-before", "drop-after"));
@@ -165,7 +171,7 @@ export function sortable(container, itemSelector, onMove, { horizontal = false }
   });
   container.addEventListener("drop", (e) => {
     if (from < 0) return;
-    const it = e.target.closest(itemSelector);
+    const it = (e.target as Element).closest<HTMLElement>(itemSelector);
     e.preventDefault();
     if (it) {
       let to = items().indexOf(it);
@@ -180,8 +186,10 @@ export function sortable(container, itemSelector, onMove, { horizontal = false }
 export { moveItem };
 
 /* ───── 세그먼트 버튼 ───── */
-export function seg(options, value, onChange) {
-  const el = h("div", { class: "seg", role: "group" });
+export interface SegOption<T> { value: T; label: string; disabled?: boolean; title?: string }
+export type Seg<T> = HTMLDivElement & { setValue(v: T): void };
+export function seg<T>(options: SegOption<T>[], value: T, onChange: (v: T) => void): Seg<T> {
+  const el = h("div", { class: "seg", role: "group" }) as Seg<T>;
   const render = () => {
     el.replaceChildren(...options.map((o) => h("button", {
       type: "button", "aria-pressed": String(o.value === value), disabled: o.disabled || null, title: o.title || null,
@@ -199,8 +207,8 @@ export const LIMITS = {
   imageFile: 60 * 1024 * 1024,
   bgFile: 30 * 1024 * 1024,
 };
-export function filterFiles(files, kinds, maxBytes, report) {
-  const ok = [], bad = [];
+export function filterFiles(files: File[], kinds: string[], maxBytes: number, report: (msg: string) => void): File[] {
+  const ok: File[] = [], bad: string[] = [];
   for (const f of files) {
     const k = kindOf(f);
     if (!kinds.includes(k)) bad.push(`${f.name}: 이 도구에서 쓸 수 없는 파일이에요.`);
@@ -213,9 +221,10 @@ export function filterFiles(files, kinds, maxBytes, report) {
 }
 
 /* ───── PDF 워커 ───── */
-let pdfWorker, seq = 0;
-const pending = new Map();
-function worker() {
+interface Pending { resolve: (v: unknown) => void; reject: (e: Error) => void; onProgress?: (done: number, total: number) => void }
+let pdfWorker: Worker | null, seq = 0;
+const pending = new Map<number, Pending>();
+function worker(): Worker {
   if (pdfWorker) return pdfWorker;
   pdfWorker = new Worker(new URL("./pdf-worker.js", import.meta.url), { type: "module" });
   pdfWorker.onmessage = (ev) => {
@@ -233,24 +242,25 @@ function worker() {
   };
   return pdfWorker;
 }
-export function runPdf(op, args, transfer = [], onProgress) {
-  return new Promise((resolve, reject) => {
+/** 워커 작업 실행. 결과 모양은 작업(op)마다 달라 부르는 쪽에서 T 로 정함 */
+export function runPdf<T = unknown>(op: string, args: unknown, transfer: Transferable[] = [], onProgress?: (done: number, total: number) => void): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
     const id = ++seq;
-    pending.set(id, { resolve, reject, onProgress });
+    pending.set(id, { resolve: resolve as (v: unknown) => void, reject, onProgress });
     worker().postMessage({ id, op, args }, transfer);
   });
 }
 
 /* ───── PDF.js (썸네일) ───── */
-let pdfjsP;
-export function loadPdfjs() {
-  pdfjsP ||= import("/vendor/pdfjs/pdf.min.mjs").then((m) => {
+let pdfjsP: Promise<PdfjsModule> | null = null;
+export function loadPdfjs(): Promise<PdfjsModule> {
+  pdfjsP ||= vendorImport<PdfjsModule>("/vendor/pdfjs/pdf.min.mjs").then((m) => {
     m.GlobalWorkerOptions.workerSrc = "/vendor/pdfjs/pdf.worker.min.mjs";
     return m;
   }).catch((e) => { pdfjsP = null; throw new Error("PDF 미리보기 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요."); });
   return pdfjsP;
 }
-export async function openPdfjs(buf) {
+export async function openPdfjs(buf: ArrayBuffer): Promise<PdfjsDocument> {
   const pdfjs = await loadPdfjs();
   try {
     return await pdfjs.getDocument({
@@ -258,24 +268,25 @@ export async function openPdfjs(buf) {
       isEvalSupported: false, enableXfa: false,
     }).promise;
   } catch (e) {
-    if (e && e.name === "PasswordException") throw new Error("암호가 걸린 PDF예요. 암호를 푼 뒤 다시 넣어 주세요.");
+    if (e && (e as Error).name === "PasswordException") throw new Error("암호가 걸린 PDF예요. 암호를 푼 뒤 다시 넣어 주세요.");
     throw new Error("PDF를 읽지 못했어요. 파일이 깨졌거나 PDF가 아닐 수 있어요.");
   }
 }
 
 /** 보이는 썸네일부터 차례로 그려요 */
-export function thumbRenderer(doc, width = 220) {
-  const queue = [];
+export interface ThumbRenderer { observe(box: HTMLElement): void; destroy(): void }
+export function thumbRenderer(doc: PdfjsDocument, width = 220): ThumbRenderer {
+  const queue: HTMLElement[] = [];
   let busy = false;
   const io = new IntersectionObserver((ents) => {
-    for (const en of ents) if (en.isIntersecting) { io.unobserve(en.target); queue.push(en.target); }
+    for (const en of ents) if (en.isIntersecting) { io.unobserve(en.target); queue.push(en.target as HTMLElement); }
     pump();
   }, { rootMargin: "300px" });
   async function pump() {
     if (busy) return;
     busy = true;
     while (queue.length) {
-      const box = queue.shift();
+      const box = queue.shift() as HTMLElement;
       const n = Number(box.dataset.page);
       try {
         const page = await doc.getPage(n + 1);
@@ -284,7 +295,7 @@ export function thumbRenderer(doc, width = 220) {
         const vp = page.getViewport({ scale });
         const c = document.createElement("canvas");
         c.width = Math.ceil(vp.width); c.height = Math.ceil(vp.height);
-        await page.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise;
+        await page.render({ canvasContext: c.getContext("2d") as CanvasRenderingContext2D, viewport: vp }).promise;
         page.cleanup();
         box.replaceChildren(c);
         box.dispatchEvent(new CustomEvent("rendered"));
@@ -302,15 +313,17 @@ export function thumbRenderer(doc, width = 220) {
 const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 export const MAX_PIXELS = IS_IOS ? 16_000_000 : 50_000_000;
 
-let heicP;
+let heicP: Promise<HeicToModule> | null = null;
 // HEIC: 브라우저가 직접 못 열면 heic-to(libheif WASM, CSP 빌드)로 브라우저 안에서 풀어요
-const loadHeic = () => (heicP ||= import("/vendor/heic-to-1.5.2-csp.mjs").catch(() => { heicP = null; throw new Error("HEIC 변환 도구를 불러오지 못했어요."); }));
-const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
+const loadHeic = () => (heicP ||= vendorImport<HeicToModule>("/vendor/heic-to-1.5.2-csp.mjs").catch(() => { heicP = null; throw new Error("HEIC 변환 도구를 불러오지 못했어요."); }));
+const withTimeout = <T>(p: Promise<T>, ms: number): Promise<T> => Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
 
 /** File → { source(ImageBitmap|HTMLImageElement), width, height, close() } (EXIF 방향 반영) */
-export async function decodeImage(file) {
+/** 열린 이미지: 그릴 소스 · 크기 · 닫기 */
+export interface DecodedImage { source: CanvasImageSource; width: number; height: number; close(): void }
+export async function decodeImage(file: File): Promise<DecodedImage> {
   const k = kindOf(file);
-  let blob = file;
+  let blob: Blob = file;
   try {
     return await bitmapFrom(blob);
   } catch (e) {
@@ -325,7 +338,7 @@ export async function decodeImage(file) {
     throw new Error(`${file.name}: HEIC 사진을 열지 못했어요. 아이폰 설정 > 카메라 > 포맷에서 '높은 호환성'으로 찍거나 JPG로 바꿔 넣어 주세요.`);
   }
 }
-async function bitmapFrom(blob) {
+async function bitmapFrom(blob: Blob): Promise<DecodedImage> {
   if ("createImageBitmap" in window) {
     try {
       const bmp = await createImageBitmap(blob, { imageOrientation: "from-image" });
@@ -345,13 +358,13 @@ async function bitmapFrom(blob) {
 }
 
 /** 이미지 → canvas (크기 조절 · 배경색 채우기) */
-export function drawToCanvas(img, w, h2, fill) {
+export function drawToCanvas(img: DecodedImage, w: number, h2: number, fill?: string | null): HTMLCanvasElement {
   let s = 1;
   if (w * h2 > MAX_PIXELS) s = Math.sqrt(MAX_PIXELS / (w * h2));
   const cw = Math.max(1, Math.floor(w * s)), ch = Math.max(1, Math.floor(h2 * s));
   const c = document.createElement("canvas");
   c.width = cw; c.height = ch;
-  const ctx = c.getContext("2d");
+  const ctx = c.getContext("2d") as CanvasRenderingContext2D;
   if (fill) { ctx.fillStyle = fill; ctx.fillRect(0, 0, cw, ch); }
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
@@ -359,22 +372,22 @@ export function drawToCanvas(img, w, h2, fill) {
   return c;
 }
 
-export function canvasToBlob(canvas, type, quality) {
+export function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality?: number): Promise<Blob> {
   return new Promise((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error("이미지를 저장하지 못했어요. 사진이 너무 클 수 있어요."))), type, quality));
 }
 
 /** 브라우저가 이 형식으로 저장(인코딩)할 수 있는지 */
-const encCache = {};
-export async function canEncode(type) {
+const encCache: Record<string, boolean> = {};
+export async function canEncode(type: string): Promise<boolean> {
   if (type in encCache) return encCache[type];
   const c = document.createElement("canvas");
   c.width = c.height = 2;
-  const b = await new Promise((r) => c.toBlob(r, type, 0.8));
+  const b = await new Promise<Blob | null>((r) => c.toBlob(r, type, 0.8));
   return (encCache[type] = !!b && b.type === type);
 }
 
 /** 작은 미리보기 URL (목록용) */
-export async function thumbURL(img, size = 120) {
+export async function thumbURL(img: DecodedImage, size = 120): Promise<string> {
   const s = Math.min(1, size / Math.max(img.width, img.height));
   const c = drawToCanvas(img, img.width * s, img.height * s);
   const b = await canvasToBlob(c, "image/jpeg", 0.7);
@@ -382,16 +395,16 @@ export async function thumbURL(img, size = 120) {
 }
 
 /* ───── ZIP ───── */
-export async function makeZip(files) {
-  const { zip } = await import("/vendor/fflate-0.8.2.mjs");
-  const obj = {};
+export async function makeZip(files: { name: string; blob: Blob }[]): Promise<Blob> {
+  const { zip } = await vendorImport<FflateModule>("/vendor/fflate-0.8.2.mjs");
+  const obj: ZipInput = {};
   for (const f of files) obj[f.name] = [new Uint8Array(await f.blob.arrayBuffer()), { level: 0 }];
   return new Promise((res, rej) => zip(obj, { level: 0 }, (err, data) => (err ? rej(new Error("ZIP을 만들지 못했어요.")) : res(new Blob([data], { type: "application/zip" })))));
 }
 
 /** 붙여넣기(클립보드) 이미지 */
-export function filesFromPaste(e) {
-  const out = [];
+export function filesFromPaste(e: ClipboardEvent): File[] {
+  const out: File[] = [];
   for (const it of e.clipboardData?.items || []) {
     if (it.kind === "file") {
       const f = it.getAsFile();

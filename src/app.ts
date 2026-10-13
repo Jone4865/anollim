@@ -6,7 +6,10 @@ import { mountBg } from "./tools-bg.js";
 import { art, stamp, FILTERS } from "./art.js";
 import { watchWorkspace, landingFx, stampIn, drawIn } from "./fx.js";
 
-const TOOLS = [
+/** 도구 화면이 돌려주는 것 (없으면 {}) */
+export interface Mounted { unmount?: () => void; onPaste?: (files: File[]) => void }
+interface Tool { id: string; title: string; desc: string; mount: (body: HTMLElement) => Mounted | void }
+const TOOLS: Tool[] = [
   { id: "pdf-merge", title: "PDF 합치기", desc: "여러 PDF를 원하는 순서로 하나로 합쳐요.", mount: mountMerge },
   { id: "pdf-split", title: "PDF 나누기 · 페이지 빼기", desc: "필요한 쪽만 골라 새 PDF로, 한 쪽씩 또는 범위로 나눠요.", mount: mountSplit },
   { id: "pdf-organize", title: "PDF 회전 · 순서 바꾸기", desc: "썸네일을 보면서 돌리고, 옮기고, 지운 뒤 저장해요.", mount: mountOrganize },
@@ -19,20 +22,22 @@ const byId = Object.fromEntries(TOOLS.map((t) => [t.id, t]));
 
 // 연필·도장 필터 (한 번만)
 document.body.insertAdjacentHTML("afterbegin", FILTERS);
-document.getElementById("hero-stamp").innerHTML = stamp("stamp");
+// 아래 id 들은 index.html 에 항상 있음
+const $id = (id: string) => document.getElementById(id) as HTMLElement;
+$id("hero-stamp").innerHTML = stamp("stamp");
 
 // 작업대 위 도구들
-document.getElementById("tool-grid").replaceChildren(
+$id("tool-grid").replaceChildren(
   ...TOOLS.map((t) => h("a", { class: "tool-item", href: `#${t.id}` },
     h("span", { html: art(t.id), style: "display:contents" }),
     h("h3", {}, t.title), h("p", {}, t.desc))),
   h("p", { class: "hand bench-memo" }, "필요한 도구가 없나요?", h("br"), h("a", { href: "mailto:cowhddnjsdl0@gmail.com" }, "메일로 알려 주세요 →")));
 
-const home = document.getElementById("home");
-const view = document.getElementById("tool-view");
-const other = document.getElementById("other-tools");
+const home = $id("home");
+const view = $id("tool-view");
+const other = $id("other-tools");
 const baseTitle = document.title;
-let active = null;
+let active: Mounted | null = null;
 
 function route() {
   const id = location.hash.slice(1);
@@ -42,7 +47,7 @@ function route() {
     view.hidden = true; view.replaceChildren();
     home.hidden = false; other.hidden = true;
     document.title = baseTitle;
-    if (id && document.getElementById(id)) document.getElementById(id).scrollIntoView();
+    if (id && document.getElementById(id)) $id(id).scrollIntoView();
     else window.scrollTo(0, 0);
     return;
   }
@@ -62,7 +67,7 @@ function route() {
   active = tool.mount(body) || {};
   watchWorkspace(body);
   drawIn(view.querySelector(".tool-head .art"));
-  stampIn(view.querySelector(".head-stamp"), 300);
+  stampIn(view.querySelector(".head-stamp") as Element, 300);
   window.scrollTo(0, 0);
 }
 

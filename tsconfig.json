@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "noFallthroughCasesInSwitch": true,
+    "types": ["node"],
+    "allowImportingTsExtensions": false
+  },
+  "include": ["src", "test", "vite.config.ts"],
+  "exclude": ["src/pdf-worker.ts"]
+}

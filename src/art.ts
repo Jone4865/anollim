@@ -4,7 +4,7 @@
 const S = 'stroke-width="2.3"'; // 기본 fill="none" stroke="currentColor" 는 바깥 <g> 에서 줘요
 const A = 'fill="var(--acc, #2563eb)" fill-opacity=".22" stroke="none"';
 
-export const ART = {
+export const ART: Record<string, string> = {
   // 스테이플러 = 합치기
   "pdf-merge": `
     <path ${A} d="M20 47 L95 39 Q104 38 104 45 L104 47 L22 55 Z"/>
@@ -80,7 +80,7 @@ export const ART_VIEWBOX = "0 0 120 90";
 export const G = 'fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"';
 
 /** 인라인 SVG 문자열 (잉크색 = currentColor) */
-export function art(id, cls = "art") {
+export function art(id: string, cls = "art"): string {
   return `<svg class="${cls}" viewBox="${ART_VIEWBOX}" aria-hidden="true"><g filter="url(#pencil)" ${G}>${ART[id] || ""}</g></svg>`;
 }
 

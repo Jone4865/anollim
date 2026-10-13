@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "WebWorker"]
+  },
+  "include": ["src/pdf-worker.ts", "src/pdf-lib.d.ts"],
+  "exclude": []
+}

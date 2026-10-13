@@ -1,4 +1,8 @@
-// 집문서 — 순수 함수 모음 (DOM 없음, node --test 로 테스트)
+// 집문서 — 순수 함수 모음 (DOM 없음, vitest 로 테스트)
+
+export type FileKind = "pdf" | "heic" | "image" | "other";
+export type PageSize = "a4" | "original";
+export interface ImageLayout { pageW: number; pageH: number; x: number; y: number; w: number; h: number }
 
 /**
  * "1-3, 5, 8-10" 같은 페이지 범위를 해석해요.
@@ -6,18 +10,18 @@
  * 예) parseRanges("1-3, 5", 10) → [[0,1,2],[4]]
  * 잘못된 입력은 한국어 메시지와 함께 Error 를 던져요.
  */
-export function parseRanges(input, pageCount) {
+export function parseRanges(input: unknown, pageCount: number): number[][] {
   const text = String(input ?? "")
     .replace(/[～〜~–—]/g, "-")
     .replace(/[，、;]/g, ",")
     .trim();
   if (!text) throw new Error("페이지 범위를 입력해 주세요. 예) 1-3, 5");
   if (!Number.isInteger(pageCount) || pageCount < 1) throw new Error("페이지가 없어요.");
-  const groups = [];
+  const groups: number[][] = [];
   for (const raw of text.split(",")) {
     const part = raw.replace(/\s+/g, "");
     if (!part) continue;
-    let m;
+    let m: RegExpExecArray | null;
     if ((m = /^(\d+)$/.exec(part))) {
       const n = Number(m[1]);
       checkPage(n, pageCount, part);
@@ -27,7 +31,7 @@ export function parseRanges(input, pageCount) {
       const b = m[2] ? Number(m[2]) : pageCount;
       checkPage(a, pageCount, part);
       checkPage(b, pageCount, part);
-      const g = [];
+      const g: number[] = [];
       if (a <= b) for (let i = a; i <= b; i++) g.push(i - 1);
       else for (let i = a; i >= b; i--) g.push(i - 1);
       groups.push(g);
@@ -39,19 +43,19 @@ export function parseRanges(input, pageCount) {
   return groups;
 }
 
-function checkPage(n, max, part) {
+function checkPage(n: number, max: number, part: string): void {
   if (n < 1 || n > max) throw new Error(`"${part}" — 페이지는 1부터 ${max}까지 있어요.`);
 }
 
 /** 그룹들을 합쳐 중복 없이 순서대로 정렬한 페이지 집합 */
-export function rangesToSet(groups) {
+export function rangesToSet(groups: number[][]): number[] {
   return [...new Set(groups.flat())].sort((a, b) => a - b);
 }
 
 /** 0부터 시작하는 인덱스 배열을 "1-3, 5" 형태로 */
-export function formatRanges(indices) {
+export function formatRanges(indices: number[]): string {
   const s = [...new Set(indices)].sort((a, b) => a - b);
-  const out = [];
+  const out: string[] = [];
   for (let i = 0; i < s.length; i++) {
     let j = i;
     while (j + 1 < s.length && s[j + 1] === s[j] + 1) j++;
@@ -62,7 +66,7 @@ export function formatRanges(indices) {
 }
 
 /** 바이트 → "1.2 MB" */
-export function formatSize(bytes) {
+export function formatSize(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) return "-";
   if (bytes < 1024) return `${bytes} B`;
   const units = ["KB", "MB", "GB"];
@@ -73,21 +77,21 @@ export function formatSize(bytes) {
 }
 
 /** 줄어든 비율(%) — 커지면 음수 */
-export function savedPercent(before, after) {
+export function savedPercent(before: number, after: number): number {
   if (!before) return 0;
   return Math.round((1 - after / before) * 100);
 }
 
 /** "사진.final.JPG" → "사진.final" */
-export function baseName(name) {
-  const n = String(name ?? "").split(/[\\/]/).pop().trim();
+export function baseName(name: unknown): string {
+  const n = (String(name ?? "").split(/[\\/]/).pop() as string).trim(); // split 결과는 비지 않아요
   const i = n.lastIndexOf(".");
   const b = i > 0 ? n.slice(0, i) : n;
   return b || "파일";
 }
 
 /** 파일 이름에 못 쓰는 글자 정리 */
-export function safeName(name) {
+export function safeName(name: unknown): string {
   return String(name ?? "")
     .replace(/[\u0000-\u001f<>:"/\\|?*]+/g, "_")
     .replace(/\s+/g, " ")
@@ -96,18 +100,18 @@ export function safeName(name) {
 }
 
 /** 결과 파일 이름: outName("보고서.pdf", "합침", "pdf") → "보고서-합침.pdf" */
-export function outName(original, suffix, ext) {
+export function outName(original: string, suffix: string, ext: string): string {
   const b = safeName(baseName(original));
   return `${b}${suffix ? "-" + suffix : ""}.${ext.replace(/^\./, "")}`;
 }
 
 /** 같은 이름이 겹치지 않게 (zip 안 파일들) */
-export function uniqueNames(names) {
-  const seen = new Map();
+export function uniqueNames(names: string[]): string[] {
+  const seen = new Map<string, number>();
   return names.map((n) => {
     const key = n.toLowerCase();
     if (!seen.has(key)) { seen.set(key, 1); return n; }
-    const c = seen.get(key) + 1;
+    const c = (seen.get(key) as number) + 1;
     seen.set(key, c);
     const i = n.lastIndexOf(".");
     const cand = i > 0 ? `${n.slice(0, i)} (${c})${n.slice(i)}` : `${n} (${c})`;
@@ -117,7 +121,7 @@ export function uniqueNames(names) {
 }
 
 /** 배열에서 항목 하나를 옮긴 새 배열 */
-export function moveItem(arr, from, to) {
+export function moveItem<T>(arr: readonly T[], from: number, to: number): T[] {
   const a = arr.slice();
   if (from < 0 || from >= a.length) return a;
   const t = Math.max(0, Math.min(a.length - 1, to));
@@ -127,7 +131,7 @@ export function moveItem(arr, from, to) {
 }
 
 /** 최대 가로/세로 안에 비율 유지해 맞추기 (확대는 안 함). 0/빈값은 제한 없음 */
-export function fitWithin(w, h, maxW, maxH) {
+export function fitWithin(w: number, h: number, maxW: number, maxH: number): { width: number; height: number; scaled: boolean } {
   let s = 1;
   if (maxW > 0 && w > maxW) s = Math.min(s, maxW / w);
   if (maxH > 0 && h > maxH) s = Math.min(s, maxH / h);
@@ -135,17 +139,17 @@ export function fitWithin(w, h, maxW, maxH) {
 }
 
 /** 회전 각도 정규화 (0/90/180/270) */
-export function normRotation(deg) {
+export function normRotation(deg: number): number {
   return (((Math.round(deg / 90) * 90) % 360) + 360) % 360;
 }
 
 /** MIME → 확장자 */
-export function extFor(mime) {
-  return { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/avif": "avif", "application/pdf": "pdf" }[mime] || "bin";
+export function extFor(mime: string): string {
+  return ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/avif": "avif", "application/pdf": "pdf" } as Record<string, string>)[mime] || "bin";
 }
 
 /** 파일 종류 판별 (이름 + MIME) */
-export function kindOf(file) {
+export function kindOf(file: { name?: string; type?: string } | null | undefined): FileKind {
   const name = String(file?.name || "").toLowerCase();
   const type = String(file?.type || "").toLowerCase();
   if (type === "application/pdf" || name.endsWith(".pdf")) return "pdf";
@@ -155,7 +159,7 @@ export function kindOf(file) {
 }
 
 /** 이미지 → PDF 배치 계산. 단위 pt. pageSize: "a4" | "original", margin pt */
-export function layoutImage(imgW, imgH, pageSize, marginPt = 0) {
+export function layoutImage(imgW: number, imgH: number, pageSize: PageSize, marginPt = 0): ImageLayout {
   if (pageSize === "original") {
     const w = imgW * 0.75, h = imgH * 0.75; // 96dpi 기준 px → pt
     return { pageW: w + marginPt * 2, pageH: h + marginPt * 2, x: marginPt, y: marginPt, w, h };
@@ -171,10 +175,10 @@ export function layoutImage(imgW, imgH, pageSize, marginPt = 0) {
 }
 
 /** mm → pt */
-export const mmToPt = (mm) => (mm * 72) / 25.4;
+export const mmToPt = (mm: number): number => (mm * 72) / 25.4;
 
 /** GPS 좌표 보기 좋게 */
-export function formatCoord(lat, lon) {
+export function formatCoord(lat: number, lon: number): string {
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return "";
   return `${Math.abs(lat).toFixed(5)}°${lat >= 0 ? "N" : "S"}, ${Math.abs(lon).toFixed(5)}°${lon >= 0 ? "E" : "W"}`;
 }

@@ -1,17 +1,19 @@
 // 6. 사진 배경 지우기 — @imgly/background-removal (기기 안에서 AI 실행)
 import { h, icon, dropzone, progress, alertBox, errMsg, resultItem, seg, filterFiles, LIMITS, decodeImage, drawToCanvas, canvasToBlob } from "./ui.js";
 import { formatSize, outName } from "./lib.js";
+import { vendorImport, type BgRemovalModule } from "./vendor.js";
+import type { Mounted } from "./app.js";
 
 // 모델·런타임은 IMG.LY CDN 에서 받아요 (CSP connect-src 에 이 주소만 허용)
 export const BG_PUBLIC_PATH = "https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/";
 export const BG_MODEL = "isnet_quint8";
 export const BG_DOWNLOAD_MB = 56; // 모델 44.3MB + ONNX 런타임 11.8MB
 
-let libP;
-const loadLib = () => (libP ||= import("/vendor/bg-removal-1.7.0-csp.mjs").catch((e) => { libP = null; throw new Error("배경 지우기 도구를 불러오지 못했어요. 새로고침 후 다시 해 주세요."); }));
+let libP: Promise<BgRemovalModule> | null = null;
+const loadLib = () => (libP ||= vendorImport<BgRemovalModule>("/vendor/bg-removal-1.7.0-csp.mjs").catch((e) => { libP = null; throw new Error("배경 지우기 도구를 불러오지 못했어요. 새로고침 후 다시 해 주세요."); }));
 
-export function mountBg(root) {
-  let file = null, srcURL = null, outBlob = null, outURL = null, bgMode = "transparent", bgColor = "#ffffff";
+export function mountBg(root: HTMLElement): Mounted {
+  let file: { name: string; size: number; blob: Blob } | null = null, srcURL: string | null = null, outBlob: Blob | null = null, outURL: string | null = null, bgMode = "transparent", bgColor = "#ffffff";
   const err = alertBox();
   const prog = progress();
   const out = h("div");
@@ -43,7 +45,7 @@ export function mountBg(root) {
     work.hidden = true; dz.hidden = false;
   }
 
-  async function pick(f) {
+  async function pick(f: File): Promise<void> {
     err.hide();
     if (!filterFiles([f], ["image", "heic"], LIMITS.bgFile, (m) => err.show(m)).length) return;
     reset();
@@ -58,7 +60,7 @@ export function mountBg(root) {
       srcURL = URL.createObjectURL(blob);
       before.replaceChildren(h("img", { src: srcURL, alt: "원본 사진" }));
       after.replaceChildren(h("span", { class: "muted", style: "font-size:13px" }, "아직 안 지웠어요"));
-      document.getElementById("bg-file").replaceChildren(h("b", { style: "color:var(--text)" }, f.name), ` · ${formatSize(f.size)}`);
+      (document.getElementById("bg-file") as HTMLElement).replaceChildren(h("b", { style: "color:var(--text)" }, f.name), ` · ${formatSize(f.size)}`);
       dz.hidden = true; work.hidden = false;
       go.disabled = false; go.textContent = "배경 지우기";
     } catch (e) { err.show(errMsg(e)); }
@@ -69,9 +71,9 @@ export function mountBg(root) {
     try {
       prog.set(null, "도구 불러오는 중…");
       const lib = await loadLib();
-      const fetched = {};
+      const fetched: Record<string, [number, number]> = {};
       const t0 = performance.now();
-      const res = await lib.removeBackground(file.blob, {
+      const res = await lib.removeBackground((file as { blob: Blob }).blob, { // 사진을 고른 뒤에만 버튼이 보임
         publicPath: BG_PUBLIC_PATH,
         model: BG_MODEL,
         device: "cpu",
@@ -103,16 +105,17 @@ export function mountBg(root) {
     after.style.background = bgMode === "white" ? "#fff" : bgMode === "color" ? bgColor : "";
     if (!outBlob) return;
     after.replaceChildren(h("img", { src: outURL, alt: "배경을 지운 사진" }));
-    let blob = outBlob, name = outName(file.name, "배경제거", "png");
+    const fname = (file as { name: string }).name; // 결과가 있으면 고른 사진도 있음
+    let blob = outBlob, name = outName(fname, "배경제거", "png");
     if (bgMode !== "transparent") {
-      const img = await decodeImage(outBlob);
+      const img = await decodeImage(outBlob as File); // 원래 JS 처럼 Blob 을 그대로 넘김
       const c = drawToCanvas(img, img.width, img.height, bgMode === "white" ? "#ffffff" : bgColor);
       img.close();
       blob = await canvasToBlob(c, "image/jpeg", 0.95);
-      name = outName(file.name, "배경바꿈", "jpg");
+      name = outName(fname, "배경바꿈", "jpg");
     }
     out.replaceChildren(h("div", { class: "result", id: "result" }, h("h2", {}, icon("ok"), "배경을 지웠어요"),
       resultItem({ name, blob, extra: bgMode === "transparent" ? "투명 배경 PNG" : "배경색 채운 JPG" })));
   }
-  return { onPaste: (fs) => fs[0] && pick(fs[0]), unmount: reset };
+  return { onPaste: (fs) => { if (fs[0]) pick(fs[0]); }, unmount: reset };
 }

@@ -1,4 +1,4 @@
-# assets/og.svg (1200x630) 만들기 — 종이 바탕 + 커팅 매트 + 손그림 도구 + "안 나감" 도장. PNG 변환은 resvg 로.
+# public/assets/og.svg (1200x630) 만들기 — 종이 바탕 + 커팅 매트 + 손그림 도구 + "안 나감" 도장. PNG 변환은 resvg 로.
 import re, os
 os.chdir(os.path.join(os.path.dirname(__file__), '..', 'assets'))
 strip = lambda s: re.sub(r'^<svg[^>]*>|</svg>\s*$', '', s.strip())

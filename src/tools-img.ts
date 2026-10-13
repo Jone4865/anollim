@@ -1,21 +1,28 @@
 // 이미지 도구: 이미지→PDF / 압축·변환·크기 / 사진 정보(EXIF) 지우기
-import { h, ICONS, icon, iconBtn, dropzone, progress, alertBox, errMsg, resultItem, sortable, seg, filterFiles, LIMITS, runPdf, decodeImage, drawToCanvas, canvasToBlob, canEncode, thumbURL, makeZip, download, toast } from "./ui.js";
+import { type SegOption, h, ICONS, icon, iconBtn, dropzone, progress, alertBox, errMsg, resultItem, sortable, seg, filterFiles, LIMITS, runPdf, decodeImage, drawToCanvas, canvasToBlob, canEncode, thumbURL, makeZip, download, toast } from "./ui.js";
 import { formatSize, outName, moveItem, savedPercent, fitWithin, extFor, kindOf, mmToPt, uniqueNames, formatCoord } from "./lib.js";
+import { vendorImport, type ExifrModule, type Exifr, type ExifData } from "./vendor.js";
+import type { Mounted } from "./app.js";
+import type { PageSize } from "./lib.js";
+
+interface Meta { count: number; chips: { cls?: string; text: string }[]; gps?: boolean }
+/** 목록의 사진 한 장 */
+interface ImgItem { id: number; file: File; thumb: string | null; w: number; h: number; error: string | null; status: string; meta?: Meta; extra?: Node }
 
 const IMG_ACCEPT = "image/*,.heic,.heif";
 const IMG_KINDS = ["image", "heic"];
 
 /** 공통: 이미지 목록 (썸네일 + 순서 바꾸기 선택) */
-function imageList({ orderable }) {
-  let items = []; let uid = 0;
+function imageList({ orderable }: { orderable: boolean }) {
+  let items: ImgItem[] = []; let uid = 0;
   const el = h("ol", { class: "flist" });
   const api = {
     el,
     get items() { return items; },
     set items(v) { items = v; api.render(); },
-    onChange: () => {},
-    add(files, onErr) {
-      const created = files.map((file) => ({ id: ++uid, file, thumb: null, w: 0, h: 0, error: null, status: "" }));
+    onChange: (): void => {},
+    add(files: File[], onErr?: (msg: string) => void) {
+      const created = files.map((file): ImgItem => ({ id: ++uid, file, thumb: null, w: 0, h: 0, error: null, status: "" }));
       items.push(...created); api.render();
       const done = (async () => {
         for (const it of created) {
@@ -30,9 +37,9 @@ function imageList({ orderable }) {
       })();
       return { created, done };
     },
-    remove(i) { const [x] = items.splice(i, 1); if (x?.thumb) URL.revokeObjectURL(x.thumb); api.render(); },
+    remove(i: number) { const [x] = items.splice(i, 1); if (x?.thumb) URL.revokeObjectURL(x.thumb); api.render(); },
     clear() { items.forEach((x) => x.thumb && URL.revokeObjectURL(x.thumb)); items = []; api.render(); },
-    render() {
+    render(): void {
       el.replaceChildren(...items.map((it, i) => h("li", { class: "fitem", draggable: orderable ? "true" : null, dataset: { k: "i" + it.id } },
         orderable ? h("span", { class: "handle", html: ICONS.grip, title: "끌어서 순서 바꾸기" }) : null,
         orderable ? h("span", { class: "fnum" }, i + 1) : null,
@@ -56,11 +63,11 @@ function imageList({ orderable }) {
   return api;
 }
 
-const isDecoded = (it) => it.w > 0 && !it.error;
+const isDecoded = (it: ImgItem) => it.w > 0 && !it.error;
 
 /* ═════════ 4. 이미지 → PDF ═════════ */
-export function mountImgToPdf(root) {
-  let pageSize = "a4", margin = "0";
+export function mountImgToPdf(root: HTMLElement): Mounted {
+  let pageSize: PageSize = "a4", margin = "0";
   const err = alertBox();
   const prog = progress();
   const out = h("div");
@@ -72,7 +79,7 @@ export function mountImgToPdf(root) {
     h("div", { class: "panel-head" }, h("h2", {}, "쪽 순서"), h("div", { class: "row" }, count, h("button", { type: "button", class: "btn ghost sm", onclick: () => { list.clear(); out.replaceChildren(); } }, "모두 지우기"))),
     list.el,
     h("div", { class: "opts", style: "margin-top:16px" },
-      h("div", { class: "opt" }, h("span", { class: "lbl" }, "쪽 크기"), seg([{ value: "a4", label: "A4 (가로세로 자동)" }, { value: "original", label: "사진 원본 크기" }], pageSize, (v) => (pageSize = v))),
+      h("div", { class: "opt" }, h("span", { class: "lbl" }, "쪽 크기"), seg<PageSize>([{ value: "a4", label: "A4 (가로세로 자동)" }, { value: "original", label: "사진 원본 크기" }], pageSize, (v) => (pageSize = v))),
       h("div", { class: "opt" }, h("span", { class: "lbl" }, "여백"), seg([{ value: "0", label: "없음" }, { value: "10", label: "좁게" }, { value: "20", label: "넓게" }], margin, (v) => (margin = v)))));
   root.append(dz, err.el, panel, h("div", { class: "actions" }, go), prog.el, out);
 
@@ -87,7 +94,7 @@ export function mountImgToPdf(root) {
   };
   list.onChange();
 
-  function add(files) {
+  function add(files: File[]): void {
     err.hide();
     const ok = filterFiles(files, IMG_KINDS, LIMITS.imageFile, (m) => err.show(m));
     list.add(ok, (m) => err.show(m));
@@ -97,7 +104,7 @@ export function mountImgToPdf(root) {
     err.hide(); out.replaceChildren(); go.disabled = true;
     const its = list.items.filter(isDecoded);
     try {
-      const images = [];
+      const images: { bytes: Uint8Array<ArrayBuffer>; mime: string; w: number; h: number }[] = [];
       for (let i = 0; i < its.length; i++) {
         prog.set(i / its.length * 0.6, `${i + 1}/${its.length} 사진 준비 중…`);
         const img = await decodeImage(its[i].file);
@@ -110,7 +117,7 @@ export function mountImgToPdf(root) {
         images.push({ bytes: new Uint8Array(await b.arrayBuffer()), mime, w: c.width, h: c.height });
         c.width = c.height = 0;
       }
-      const { bytes } = await runPdf("images", { images, pageSize, marginPt: mmToPt(Number(margin)) }, images.map((x) => x.bytes.buffer), (d, t) => prog.set(0.6 + d / t * 0.35, `${d}/${t} 쪽 만드는 중…`));
+      const { bytes } = await runPdf<{ bytes: Uint8Array<ArrayBuffer> }>("images", { images, pageSize, marginPt: mmToPt(Number(margin)) }, images.map((x) => x.bytes.buffer), (d, t) => prog.set(0.6 + d / t * 0.35, `${d}/${t} 쪽 만드는 중…`));
       prog.set(1, "완료!");
       const name = outName(its[0].file.name, its.length > 1 ? `외${its.length - 1}장` : "", "pdf");
       out.replaceChildren(h("div", { class: "result", id: "result" }, h("h2", {}, icon("ok"), `${its.length}쪽짜리 PDF가 만들어졌어요`), resultItem({ name, blob: new Blob([bytes], { type: "application/pdf" }) })));
@@ -121,7 +128,7 @@ export function mountImgToPdf(root) {
 }
 
 /* ═════════ 5. 이미지 압축 · 변환 · 크기 조절 ═════════ */
-export function mountCompress(root) {
+export function mountCompress(root: HTMLElement): Mounted {
   let fmt = "keep", quality = 80;
   const err = alertBox();
   const prog = progress();
@@ -135,7 +142,7 @@ export function mountCompress(root) {
   const maxW = h("input", { class: "input num", type: "number", min: "1", inputmode: "numeric", placeholder: "그대로", "aria-label": "최대 가로(px)" });
   const maxH = h("input", { class: "input num", type: "number", min: "1", inputmode: "numeric", placeholder: "그대로", "aria-label": "최대 세로(px)" });
   const qOpt = h("div", { class: "opt" }, h("span", { class: "lbl" }, "화질 ", qVal), q, h("div", { class: "hint" }, "70~85%면 눈으로 차이를 느끼기 어려워요. PNG는 화질 설정이 없어요."));
-  const fmtOpts = [
+  const fmtOpts: SegOption<string>[] = [
     { value: "keep", label: "원래 형식" },
     { value: "image/jpeg", label: "JPG" },
     { value: "image/png", label: "PNG" },
@@ -158,7 +165,7 @@ export function mountCompress(root) {
 
   // 브라우저가 저장할 수 없는 형식은 끄기
   (async () => {
-    const no = [];
+    const no: string[] = [];
     for (const o of fmtOpts) if (o.value.startsWith("image/") && !(await canEncode(o.value))) { o.disabled = true; o.title = "이 브라우저는 이 형식으로 저장할 수 없어요"; no.push(o.label); }
     fmtSeg.setValue(fmt);
     fmtHint.textContent = no.length ? `이 브라우저는 ${no.join(", ")} 저장을 지원하지 않아요. (원래 형식이 그렇다면 JPG로 저장해요)` : "원래 형식: JPG는 JPG로, PNG는 PNG로 저장해요. HEIC는 JPG로.";
@@ -176,12 +183,12 @@ export function mountCompress(root) {
   };
   list.onChange();
 
-  function add(files) {
+  function add(files: File[]): void {
     err.hide();
     list.add(filterFiles(files, IMG_KINDS, LIMITS.imageFile, (m) => err.show(m)), (m) => err.show(m));
   }
 
-  async function targetType(file) {
+  async function targetType(file: File): Promise<string> {
     if (fmt !== "keep") return fmt;
     const t = file.type;
     if ((t === "image/png" || t === "image/webp" || t === "image/avif") && (await canEncode(t))) return t;
@@ -193,7 +200,7 @@ export function mountCompress(root) {
   async function run() {
     err.hide(); out.replaceChildren(); go.disabled = true;
     const its = list.items.filter(isDecoded);
-    const results = [];
+    const results: { it: ImgItem; blob: Blob; type: string; w: number; h: number; name: string }[] = [];
     const mw = Number(maxW.value) || 0, mh = Number(maxH.value) || 0;
     try {
       for (let i = 0; i < its.length; i++) {
@@ -217,7 +224,7 @@ export function mountCompress(root) {
       const box = h("div", { class: "result", id: "result" },
         h("h2", {}, icon("ok"), `${results.length}장 끝! ${formatSize(before)} → ${formatSize(after)}`, h("span", { class: `pill ${pct >= 0 ? "good" : "bad"}` }, pct >= 0 ? `${pct}% 줄었어요` : `${-pct}% 커졌어요`)));
       if (results.length > 1) {
-        const zipBtn = h("button", { type: "button", class: "btn primary", onclick: async () => { zipBtn.disabled = true; try { download(await makeZip(results), `사진-${results.length}장-변환.zip`); } catch (e) { err.show(errMsg(e)); } zipBtn.disabled = false; } }, icon("dl"), "모두 ZIP으로 받기");
+        const zipBtn: HTMLButtonElement = h("button", { type: "button", class: "btn primary", onclick: async () => { zipBtn.disabled = true; try { download(await makeZip(results), `사진-${results.length}장-변환.zip`); } catch (e) { err.show(errMsg(e)); } zipBtn.disabled = false; } }, icon("dl"), "모두 ZIP으로 받기");
         box.append(h("div", { class: "row", style: "margin-bottom:8px" }, zipBtn));
       }
       for (const r of results) {
@@ -235,19 +242,19 @@ export function mountCompress(root) {
 }
 
 /* ═════════ 7. 사진 정보(EXIF·위치) 지우기 ═════════ */
-let exifrP;
-const loadExifr = () => (exifrP ||= import("/vendor/exifr-7.1.3.mjs").then((m) => m.default || m));
+let exifrP: Promise<Exifr> | null = null;
+const loadExifr = () => (exifrP ||= vendorImport<ExifrModule>("/vendor/exifr-7.1.3.mjs").then((m) => m.default || m));
 
-async function readMeta(fileOrBlob) {
+async function readMeta(fileOrBlob: Blob): Promise<Meta> {
   const exifr = await loadExifr();
-  let d = null;
+  let d: ExifData | null | undefined = null;
   try {
     d = await exifr.parse(fileOrBlob, { tiff: true, exif: true, gps: true, xmp: true, iptc: true, icc: false, jfif: false, ihdr: false, mergeOutput: true, translateValues: true, reviveValues: true });
   } catch { d = null; }
   if (!d) return { count: 0, chips: [] };
   const keys = Object.keys(d).filter((k) => !/^(ImageWidth|ImageHeight|ExifImageWidth|ExifImageHeight|Orientation|ColorSpace|XResolution|YResolution|ResolutionUnit|YCbCrPositioning|BitsPerSample|ColorComponents|Compression|PixelXDimension|PixelYDimension)$/.test(k));
-  const chips = [];
-  if (Number.isFinite(d.latitude) && Number.isFinite(d.longitude)) chips.push({ cls: "gps", text: `위치 정보 있음! ${formatCoord(d.latitude, d.longitude)}` });
+  const chips: Meta["chips"] = [];
+  if (Number.isFinite(d.latitude) && Number.isFinite(d.longitude)) chips.push({ cls: "gps", text: `위치 정보 있음! ${formatCoord(d.latitude as number, d.longitude as number)}` });
   else if (keys.some((k) => /^GPS/.test(k))) chips.push({ cls: "gps", text: "위치 관련 정보 있음!" });
   const cam = [d.Make, d.Model].filter(Boolean).join(" ").replace(/^(\w+) \1 /i, "$1 ");
   if (cam) chips.push({ text: `카메라: ${cam}` });
@@ -261,9 +268,9 @@ async function readMeta(fileOrBlob) {
   if (rest > 0) chips.push({ text: `그 밖의 정보 ${rest}개` });
   return { count: keys.length, chips, gps: chips.some((c) => c.cls === "gps") };
 }
-const chipsEl = (meta) => h("div", { class: "chips" }, meta.count ? meta.chips.map((c) => h("span", { class: `chip ${c.cls || ""}`, title: c.text }, c.text)) : h("span", { class: "chip clean" }, "숨은 정보 없음"));
+const chipsEl = (meta: Meta) => h("div", { class: "chips" }, meta.count ? meta.chips.map((c) => h("span", { class: `chip ${c.cls || ""}`, title: c.text }, c.text)) : h("span", { class: "chip clean" }, "숨은 정보 없음"));
 
-export function mountExif(root) {
+export function mountExif(root: HTMLElement): Mounted {
   const err = alertBox();
   const prog = progress();
   const out = h("div");
@@ -292,7 +299,7 @@ export function mountExif(root) {
   };
   list.onChange();
 
-  async function add(files) {
+  async function add(files: File[]): Promise<void> {
     err.hide();
     const ok = filterFiles(files, IMG_KINDS, LIMITS.imageFile, (m) => err.show(m));
     const { created, done } = list.add(ok, (m) => err.show(m));
@@ -307,7 +314,7 @@ export function mountExif(root) {
   async function run() {
     err.hide(); out.replaceChildren(); go.disabled = true;
     const its = list.items.filter(isDecoded);
-    const results = [];
+    const results: { it: ImgItem; blob: Blob; after: Meta; name: string }[] = [];
     try {
       for (let i = 0; i < its.length; i++) {
         const it = its[i];
@@ -328,7 +335,7 @@ export function mountExif(root) {
       const clean = results.every((r) => r.after.count === 0);
       const box = h("div", { class: "result", id: "result" }, h("h2", {}, icon("ok"), clean ? `${results.length}장 모두 깨끗해졌어요` : "저장했어요 (일부 정보가 남았어요)"));
       if (results.length > 1) {
-        const zipBtn = h("button", { type: "button", class: "btn primary", onclick: async () => { zipBtn.disabled = true; try { download(await makeZip(results), `사진-${results.length}장-정보삭제.zip`); } catch (e) { err.show(errMsg(e)); } zipBtn.disabled = false; } }, icon("dl"), "모두 ZIP으로 받기");
+        const zipBtn: HTMLButtonElement = h("button", { type: "button", class: "btn primary", onclick: async () => { zipBtn.disabled = true; try { download(await makeZip(results), `사진-${results.length}장-정보삭제.zip`); } catch (e) { err.show(errMsg(e)); } zipBtn.disabled = false; } }, icon("dl"), "모두 ZIP으로 받기");
         box.append(h("div", { class: "row", style: "margin-bottom:8px" }, zipBtn));
       }
       for (const r of results) box.append(resultItem({ name: r.name, blob: r.blob, thumb: h("img", { class: "fthumb", src: r.it.thumb, alt: "" }), extra: r.after.count === 0 ? h("span", { class: "chip clean" }, "다시 확인: 남은 정보 없음") : h("span", { class: "chip" }, `남은 정보 ${r.after.count}개`) }));
