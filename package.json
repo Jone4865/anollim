@@ -2,5 +2,9 @@
   "name": "anollim",
   "private": true,
   "type": "module",
-  "scripts": { "test": "node --test" }
+  "scripts": {
+    "test": "node --test"
+  },
+  "license": "AGPL-3.0-only",
+  "repository": "https://github.com/Jone4865/anollim"
 }
