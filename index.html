@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>안올림 — 업로드 없는 파일 도구</title>
+<meta name="description" content="PDF 합치기·나누기·회전, 이미지 압축·변환, 사진 배경 지우기, 사진 위치 정보 지우기. 모든 처리는 브라우저 안에서 끝나요. 파일이 내 컴퓨터 밖으로 나가지 않아요.">
+<meta name="theme-color" content="#f6f1e7">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://anollim.vercel.app/">
+<meta property="og:title" content="안올림 — 업로드 없는 파일 도구">
+<meta property="og:description" content="PDF·사진 작업을 브라우저 안에서. 파일이 내 컴퓨터 밖으로 나가지 않아요.">
+<meta property="og:image" content="https://anollim.vercel.app/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/assets/favicon.png" type="image/png">
+<link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&display=swap">
+<link rel="stylesheet" href="/css/style.css">
+<script defer src="https://cdn.jsdelivr.net/npm/roughjs@4.6.6/bundled/rough.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
+<script type="module" src="/js/app.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a class="brand" href="#"><img src="/assets/icon.svg" alt="" width="38" height="38"><span>안올림<small class="hand">업로드 없는 파일 도구</small></span></a>
+    <div class="links"><a href="#tools">도구</a><a href="#trust">정말 안 올라가나요?</a></div>
+  </nav>
+
+  <main id="home">
+    <header class="hero">
+      <div class="hero-text">
+        <p class="hand hero-note">설치 ✕ · 가입 ✕ · 업로드 ✕</p>
+        <h1><span class="marker">업로드 없는</span><br>파일 도구</h1>
+        <p class="lead">PDF 합치기부터 사진 배경 지우기까지, 모든 작업은 지금 보고 있는 이 브라우저 안에서 끝나요. <b>파일이 내 컴퓨터 밖으로 나가지 않아요.</b></p>
+      </div>
+      <div class="hero-desk" aria-hidden="true">
+        <div class="mat mat-mini">
+          <div class="sheet hero-sheet s1"><span class="sheet-name">계약서.pdf</span><i></i><i></i><i></i><i class="short"></i></div>
+          <div class="sheet hero-sheet s2"><span class="sheet-name">여권사진.jpg</span><span class="photo-ph"></span></div>
+          <div class="hero-stamp" id="hero-stamp"></div>
+        </div>
+      </div>
+    </header>
+
+    <section id="tools" class="bench-wrap" aria-label="도구 목록">
+      <div class="mat bench">
+        <div class="ruler ruler-top" aria-hidden="true"></div>
+        <p class="tape hand bench-title">오늘의 작업대 — 쓸 도구를 집어 드세요</p>
+        <div class="tools" id="tool-grid"></div>
+      </div>
+    </section>
+
+    <section id="trust" class="trust">
+      <div class="note">
+        <span class="tape tape-l" aria-hidden="true"></span><span class="tape tape-r" aria-hidden="true"></span>
+        <h2>정말 <span class="circled" id="circ">안 올라가나요?</span></h2>
+        <p>안올림에는 파일을 받는 서버가 아예 없어요. 페이지에 <b>보안 정책(CSP)</b>을 걸어서, 브라우저가 이 사이트 말고 다른 곳으로는 데이터를 보낼 수 없게 막아두었어요. 실수로라도 파일이 나갈 길이 없어요.</p>
+        <ol class="steps">
+          <li>PC에서 <kbd>F12</kbd>(맥은 <kbd>⌥⌘I</kbd>)로 개발자 도구를 열어요.</li>
+          <li><b>네트워크</b> 탭을 연 채로 아무 도구에 파일을 넣어 보세요.</li>
+          <li>파일 크기만 한 요청이 하나도 안 생기는 걸 직접 확인할 수 있어요.</li>
+        </ol>
+        <p class="hand memo">* 배경 지우기만 처음 한 번 AI 모델(약 56MB)을 받아와요. 받아오기만 하고, 사진은 안 보내요.</p>
+      </div>
+      <div class="slip" aria-label="걸어둔 보안 정책 요약">
+        <p class="slip-h hand">보안 정책 메모</p>
+        <dl>
+          <div><dt>데이터 보낼 수 있는 곳</dt><dd>이 사이트 + 모델 받는 곳</dd></div>
+          <div><dt>파일 받는 서버</dt><dd class="big">0개</dd></div>
+          <div><dt>폼 전송</dt><dd>막음</dd></div>
+          <div><dt>방문 분석 · 광고</dt><dd>없음</dd></div>
+        </dl>
+      </div>
+    </section>
+  </main>
+
+  <main id="tool-view" hidden></main>
+
+  <footer>
+    <nav class="other-tools" id="other-tools" aria-label="다른 도구" hidden></nav>
+    <p>개인정보: 로그인 없음. 파일은 브라우저 메모리에서만 다루고 어디에도 저장·전송하지 않아요. 저장하는 데이터도 없어요.</p>
+    <p>쓴 오픈소스: pdf-lib · PDF.js · fflate · exifr · heic-to · <a href="https://github.com/imgly/background-removal-js" target="_blank" rel="noopener">@imgly/background-removal</a>(AGPL-3.0, 고치지 않고 사용) · ONNX Runtime Web · rough.js · anime.js</p>
+    <p>문의: <a href="mailto:cowhddnjsdl0@gmail.com">cowhddnjsdl0@gmail.com</a> · <a href="https://toon.at/donate/ggyaaaaak" target="_blank" rel="noopener">☕ 응원하기</a></p>
+    <p>© 2026 안올림 · <a href="https://jone-lab.vercel.app">Jone Lab의 다른 프로젝트 보기</a></p>
+  </footer>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

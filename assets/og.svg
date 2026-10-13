@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+<defs>
+<pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#fff" stroke-opacity=".08"/></pattern>
+<pattern id="grid2" width="120" height="120" patternUnits="userSpaceOnUse"><path d="M120 0H0V120" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="1.5"/></pattern>
+<filter id="pencil" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.2"/></filter>
+<filter id="pen" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="4"/></filter>
+</defs>
+<rect width="1200" height="630" fill="#f6f1e7"/>
+<rect x="620" y="40" width="560" height="560" rx="18" fill="#2e6a50"/><rect x="620" y="40" width="560" height="560" rx="18" fill="url(#grid)"/><rect x="620" y="40" width="560" height="560" rx="18" fill="url(#grid2)"/>
+<rect x="626" y="46" width="548" height="548" rx="14" fill="none" stroke="#255a43" stroke-width="10"/>
+<text x="660" y="110" font-family="Apple SD Gothic Neo" font-weight="700" font-size="26" fill="#f3efe2">오늘의 작업대</text>
+<g transform="translate(668,170) rotate(-4)"><rect x="-6" y="-6" width="222" height="132" fill="#000" opacity=".18" rx="3" transform="translate(4,6)"/><rect x="-6" y="-6" width="222" height="132" fill="#fffdf7" rx="3"/>
+<g transform="translate(46,0) scale(1.05)" color="#2a2622"><g filter="url(#pencil)" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <path fill="#2563eb" fill-opacity=".22" stroke="none" d="M20 47 L95 39 Q104 38 104 45 L104 47 L22 55 Z"/>
+    <path stroke-width="2.3" d="M28 76 l58 -3 l3 9 l-58 3 z" stroke-opacity=".55"/>
+    <path stroke-width="2.3" d="M24 73 l58 -4 l4 9 l-58 4 z" fill="#fffdf7"/>
+    <path stroke-width="2.3" d="M12 70 Q12 64 18 64 L102 63 Q108 63 108 68 L108 70 Q108 74 103 74 L16 75 Q12 75 12 70 Z"/>
+    <path stroke-width="2.3" d="M19 60 Q18 46 30 44 L96 37 Q105 36 105 44 Q105 50 97 51 L36 58"/>
+    <path stroke-width="2.3" d="M95 51 l1 12"/>
+    <circle stroke-width="2.3" cx="22" cy="58" r="5.5"/>
+    <path stroke-width="2.3" d="M40 44 l-1 -4 M58 42 l-1 -4 M76 40 l-1 -4" stroke-opacity=".5"/></g></g><text x="105" y="114" text-anchor="middle" font-family="Apple SD Gothic Neo" font-weight="800" font-size="19" fill="#2a2622">PDF 합치기</text></g><g transform="translate(920,160) rotate(3)"><rect x="-6" y="-6" width="222" height="132" fill="#000" opacity=".18" rx="3" transform="translate(4,6)"/><rect x="-6" y="-6" width="222" height="132" fill="#fffdf7" rx="3"/>
+<g transform="translate(46,0) scale(1.05)" color="#2a2622"><g filter="url(#pencil)" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke-width="2.3" d="M14 22 l62 -6 l4 58 l-62 6 z" fill="#fffdf7"/>
+    <path stroke-width="2.3" d="M17 50 l6 -0.5 M28 49 l6 -0.5 M39 48 l6 -0.5 M50 47 l6 -0.5 M61 46 l6 -0.5" stroke="#2563eb"/>
+    <path fill="#2563eb" fill-opacity=".22" stroke="none" d="M70 44 L110 30 L108 36 Z"/>
+    <path stroke-width="2.3" d="M70 46 L111 29 Q112 33 108 37 L74 50"/>
+    <path stroke-width="2.3" d="M70 46 L109 64 Q107 68 103 66 L74 52"/>
+    <ellipse stroke-width="2.3" cx="58" cy="35" rx="9" ry="7" transform="rotate(-20 58 35)"/>
+    <ellipse stroke-width="2.3" cx="58" cy="62" rx="9" ry="7" transform="rotate(20 58 62)"/>
+    <path stroke-width="2.3" d="M65 39 L72 47 M65 58 L72 50"/>
+    <circle cx="73" cy="48.5" r="1.8" fill="currentColor"/></g></g><text x="105" y="114" text-anchor="middle" font-family="Apple SD Gothic Neo" font-weight="800" font-size="19" fill="#2a2622">PDF 나누기</text></g><g transform="translate(680,360) rotate(2)"><rect x="-6" y="-6" width="222" height="132" fill="#000" opacity=".18" rx="3" transform="translate(4,6)"/><rect x="-6" y="-6" width="222" height="132" fill="#fffdf7" rx="3"/>
+<g transform="translate(46,0) scale(1.05)" color="#2a2622"><g filter="url(#pencil)" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke-width="2.3" d="M20 82 L100 82 M24 82 L24 16 M96 82 L96 16 M18 16 L102 16"/>
+    <path stroke-width="2.3" d="M60 16 L60 40 M54 22 l12 3 M54 28 l12 3 M54 34 l12 3"/>
+    <path d="M44 8 L76 8" stroke-width="3"/>
+    <circle cx="44" cy="8" r="3" fill="currentColor"/><circle cx="76" cy="8" r="3" fill="currentColor"/>
+    <path fill="#2563eb" fill-opacity=".22" stroke="none" d="M34 40 h52 v7 h-52 z"/>
+    <path stroke-width="2.3" d="M34 40 h52 v7 h-52 z"/>
+    <path stroke-width="2.3" d="M36 70 l48 0 l0 10 l-48 0 z" fill="#fffdf7"/>
+    <path stroke-width="2.3" d="M38 64 l44 -1 M38 67 l44 0" stroke-opacity=".6"/>
+    <path stroke-width="2.3" d="M40 52 l0 6 l-3 -3 M40 58 l3 -3 M80 52 l0 6 l-3 -3 M80 58 l3 -3" stroke="#2563eb"/></g></g><text x="105" y="114" text-anchor="middle" font-family="Apple SD Gothic Neo" font-weight="800" font-size="19" fill="#2a2622">이미지 압축</text></g><g transform="translate(925,350) rotate(-3)"><rect x="-6" y="-6" width="222" height="132" fill="#000" opacity=".18" rx="3" transform="translate(4,6)"/><rect x="-6" y="-6" width="222" height="132" fill="#fffdf7" rx="3"/>
+<g transform="translate(46,0) scale(1.05)" color="#2a2622"><g filter="url(#pencil)" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke-width="2.3" d="M36 72 C24 58 16 48 16 36 a20 20 0 0 1 40 0 c0 12 -8 22 -20 36 z" stroke-dasharray="5 4" stroke-opacity=".55"/>
+    <circle stroke-width="2.3" cx="36" cy="36" r="7" stroke-opacity=".55"/>
+    <path stroke-width="2.3" d="M58 66 L90 26 L110 42 L80 82 Z" fill="#fffdf7"/>
+    <path fill="#2563eb" fill-opacity=".22" stroke="none" d="M58 66 L70 51 L90 67 L80 82 Z"/>
+    <path stroke-width="2.3" d="M70 51 L90 67"/>
+    <path stroke-width="2.3" d="M18 84 q10 -4 20 0 t20 0" stroke-opacity=".45"/>
+    <circle cx="46" cy="76" r="1.5" fill="currentColor"/><circle cx="52" cy="80" r="1.2" fill="currentColor"/><circle cx="40" cy="80" r="1" fill="currentColor"/></g></g><text x="105" y="114" text-anchor="middle" font-family="Apple SD Gothic Neo" font-weight="800" font-size="19" fill="#2a2622">위치정보 지우기</text></g>
+<path d="M70 236 C200 214 330 246 470 222 S560 222 590 228 L588 262 C470 254 330 270 200 262 S90 268 72 266 Z" fill="#2563eb" fill-opacity=".28"/>
+<text x="72" y="140" font-family="Apple SD Gothic Neo" font-weight="800" font-size="40" fill="#2a2622">안올림</text>
+<text x="72" y="250" font-family="Apple SD Gothic Neo" font-weight="900" font-size="78" fill="#2a2622" letter-spacing="-3">업로드 없는</text>
+<text x="72" y="345" font-family="Apple SD Gothic Neo" font-weight="900" font-size="78" fill="#2a2622" letter-spacing="-3">파일 도구</text>
+<text x="72" y="418" font-family="Apple SD Gothic Neo" font-weight="600" font-size="28" fill="#6f675e">PDF 합치기 · 나누기 · 사진 압축</text>
+<text x="72" y="458" font-family="Apple SD Gothic Neo" font-weight="600" font-size="28" fill="#6f675e">배경 지우기 · 위치 정보 지우기</text>
+<g transform="translate(1085,538) rotate(-14) scale(.72)" filter="url(#pen)" fill="none" stroke="#2563eb"><circle r="78" stroke-width="7"/><circle r="64" stroke-width="3"/>
+<text y="16" text-anchor="middle" font-family="Apple SD Gothic Neo" font-weight="900" font-size="40" fill="#2563eb" stroke="none" letter-spacing="-2">안 나감</text></g>
+<text x="72" y="572" font-family="Apple SD Gothic Neo" font-size="22" fill="#6f675e">anollim.vercel.app · 파일이 내 컴퓨터 밖으로 나가지 않아요</text>
+</svg>
