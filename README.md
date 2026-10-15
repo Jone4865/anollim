@@ -2,7 +2,7 @@
 
 https://jipmunseo.pages.dev (Cloudflare Pages · 예전 `*.vercel.app` 주소는 정리돼서 열리지 않아요)
 
-PDF 합치기·나누기·회전·**용량 줄이기**, **신분증 가리기·"OO 제출용" 워터마크**, 이미지 → PDF, 이미지 압축·변환,
+**한글 문서(HWP·HWPX) 보기·PDF·쪽 그림 저장**, PDF 합치기·나누기·회전·**용량 줄이기**, **신분증 가리기·"OO 제출용" 워터마크**, 이미지 → PDF, 이미지 압축·변환,
 사진 배경 지우기, 사진 정보(EXIF·위치) 지우기를 **브라우저 안에서만** 처리하는 정적 사이트예요.
 서버 함수가 없고, 우리 코드는 파일을 어디로도 보내지 않아요.
 
@@ -17,6 +17,7 @@ PDF 합치기·나누기·회전·**용량 줄이기**, **신분증 가리기·"
 ## 도구
 | 주소 | 하는 일 | 코드 |
 |---|---|---|
+| `#hwp-view` | **HWP 보기 · 변환**: HWP 5.0·HWPX·HWP 3.0을 rhwp(WASM, 워커)로 열어 쪽 SVG 를 `<img>`(blob)로 보여 줘요(문서 마크업을 페이지 DOM 에 넣지 않음). 내보내기: 그림 PDF(150/200dpi, 쪽 고르기)·쪽 그림 PNG(여러 장이면 ZIP, 휴대폰은 공유 시트). 암호 문서는 기기 안에서 암호로 열기, DRM·인증서 보안 문서는 열지 않음, 배포용 문서는 복사·인쇄 제한 플래그를 직접 읽어 화면은 PNG 로만·인쇄방지면 저장·인쇄 막기. Word·텍스트 내보내기는 다음 단계 | `src/tools-hwp.ts` · `src/hwp-lib.ts`(판별·정책) · `src/hwp-svg.ts` · `src/hwp-export*.ts` · `src/hwp-worker.ts` · `src/hwp-client.ts` |
 | `#pdf-merge` · `#pdf-split` · `#pdf-organize` | 합치기 / 나누기·쪽 빼기 / 회전·순서 | `src/tools-pdf.ts` → `src/pdf-worker.ts` |
 | `#pdf-compress` | 용량 줄이기: **사진만 줄이기**(글자·링크 그대로, 안의 JPEG·Flate 사진을 긴 변·화질 기준으로 다시 저장 + 압축 안 된 스트림 Flate) / **쪽을 통째로 이미지로**(PDF.js 로 dpi 맞춰 그려서 JPEG 쪽 PDF) | `src/pdf-shrink.ts`(워커에서 실행, 노드 테스트) |
 | `#id-mask` | 서류 사본 가리기(끌어서 검은 네모, 그림 위에 칠해 저장 → 밑 글자 안 남음) + "OO 제출용 · 날짜 · 다른 용도 사용 금지" 대각선 반복 워터마크. 사진 → JPG·A4 PDF, PDF(10쪽까지) → 이미지 PDF | `src/tools-mask.ts` |
@@ -36,6 +37,16 @@ PDF 합치기·나누기·회전·**용량 줄이기**, **신분증 가리기·"
 - 결과물: `public/vendor/bg-removal-1.7.0-csp.mjs`
 - 다시 만드는 방법: `dev/build-bg.sh` (패치 스크립트 `dev/patch-imgly.py`)
 
+### 한글 문서 보기 (rhwp · Noto 글꼴 · 한컴 고지)
+- [rhwp](https://github.com/edwardkim/rhwp) `@rhwp/core` 0.8.7 (MIT) — `public/vendor/rhwp-0.8.7/` 에 고치지 않은 npm 배포본(`rhwp.js`·`rhwp_bg.wasm`)과 `LICENSE`·`THIRD_PARTY_LICENSES.md`(안의 Rust 크레이트 목록)를 둬요. 받기·해시 확인: `bash dev/update-rhwp.sh`.
+- 글꼴 Noto Serif KR·Noto Sans KR Regular (SIL OFL 1.1, rhwp v0.8.7 `assets/fonts` 의 서브셋) — `public/vendor/rhwp-0.8.7/fonts/`(버전 폴더 안: `/vendor/*` 는 1년 immutable 캐시라서). 쪽 SVG 안에 data URI 로 넣어 기기마다 같은 모양으로 그려요. 굵은체는 넣지 않았어요.
+- 서비스 코드는 rhwp 의 편집·다시 저장·배포용 풀기(`convertToEditable`·`exportHwp*`·`exportHwpx*`)를 부르지 않아요(`src/rhwp.d.ts` 에도 없어요). 배포용 문서를 끄는 스위치: `src/hwp-lib.ts` 의 `HWP_ALLOW_DISTRIBUTION`.
+- 시험 파일 `test/fixtures/hwp/` 는 `node dev/make-hwp-fixtures.mjs` 로 rhwp 가 직접 만든 합성 문서예요.
+- 한컴 공개 문서 이용 조건에 따른 고지:
+  - 본 제품은 한컴의 HWP 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
+  - 본 제품은 한글과컴퓨터의 한글 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
+- 한글·한컴·HWP·HWPX는 ㈜한컴(옛 ㈜한글과컴퓨터)의 상표예요. 집문서는 한컴과 제휴·후원·승인 관계가 없는 독립 도구예요.
+
 ### 그 밖에 쓴 오픈소스 (각자의 라이선스)
 pdf-lib (MIT) · PDF.js (Apache-2.0) · fflate (MIT) · exifr (MIT) · heic-to (LGPL-3.0, CSP 빌드) · ONNX Runtime Web (MIT) — `public/vendor/` 에 그대로 들어 있어요 (Vite 가 다시 묶지 않고 `/vendor/…` 주소 그대로 배포). 글꼴 Pretendard (OFL) 는 jsDelivr 에서 불러와요.
 
@@ -44,15 +55,15 @@ pdf-lib (MIT) · PDF.js (Apache-2.0) · fflate (MIT) · exifr (MIT) · heic-to (
 
 ## 개발 (TypeScript + Vite)
 
-- 코드: `src/*.ts` (`strict`). 화면 → `dist/js/` 로 묶이고, PDF 작업은 `src/pdf-worker.ts` 모듈 워커.
-- vendor 라이브러리(pdf-lib · PDF.js · fflate · exifr · heic-to · bg-removal)는 `public/vendor/` 의 고정 버전 파일을 **처음 쓸 때** 그 주소 그대로 불러와요(`src/vendor.ts` 의 `vendorImport`). 쓰는 API 만 타입으로 적었어요(`src/vendor.ts`, 워커의 pdf-lib 은 `src/pdf-lib.d.ts`).
+- 코드: `src/*.ts` (`strict`). 화면 → `dist/js/` 로 묶이고, PDF 작업은 `src/pdf-worker.ts`, 한글 문서는 `src/hwp-worker.ts` 모듈 워커(`vendor:rhwp` → `/vendor/rhwp-0.8.7/rhwp.js` 그대로, `vite.config.ts`).
+- vendor 라이브러리(pdf-lib · PDF.js · fflate · exifr · heic-to · bg-removal · rhwp)는 `public/vendor/` 의 고정 버전 파일을 **처음 쓸 때** 그 주소 그대로 불러와요(`src/vendor.ts` 의 `vendorImport`). 쓰는 API 만 타입으로 적었어요(`src/vendor.ts`, 워커의 pdf-lib 은 `src/pdf-lib.d.ts`).
 - `public/` (vendor · css · assets · `_headers`) 은 같은 경로로 복사돼요. CSS 는 Vite 가 손대지 않아요.
 - 디자인: 초록 커팅 매트 위 반듯한 카드, 포인트 파랑 `#2563eb`. 손글씨·연필·도장 장식은 쓰지 않아요(Jone Lab 가이드 3차 개정).
 - 공유 이미지·아이콘: `dev/make-og.py`(→ `public/assets/og.svg`), `dev/export-art.mjs`(일러스트 → `dev/art/`), PNG 는 `dev/render-png.sh`(크롬 헤드리스).
 
 ```bash
 npm run dev            # Vite 개발 서버
-npm test               # 단위 테스트 (Vitest) — 순수 함수 + PDF 용량 줄이기(실제 pdf-lib, 가짜 코덱)
+npm test               # 단위 테스트 (Vitest) — 순수 함수 + PDF 용량 줄이기(실제 pdf-lib, 가짜 코덱) + 한글 문서(실제 rhwp WASM, 합성 문서)
 npm run typecheck      # tsc (화면 + 워커)
 npm run build          # dist/
 node dev/serve.mjs     # dist/ 를 public/_headers 와 같은 헤더(CSP)로 로컬 확인

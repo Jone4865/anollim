@@ -5,6 +5,19 @@ const S = 'stroke-width="2.3"'; // 기본 fill="none" stroke="currentColor" 는 
 const A = 'fill="var(--acc, #2563eb)" fill-opacity=".22" stroke="none"';
 
 export const ART: Record<string, string> = {
+  // 한글 문서 한 장(접힌 귀 + 파란 띠 "HWP") → PDF 종이 = HWP 보기 · 변환. 한컴 로고 모양은 피해요
+  "hwp-view": `
+    <path ${S} d="M10 14 h34 l10 10 v58 h-44 z" fill="#fffdf7"/>
+    <path ${S} d="M44 14 v10 h10"/>
+    <path ${S} d="M16 32 h24 M16 39 h30 M16 46 h26" stroke-opacity=".45"/>
+    <path ${A} d="M13 58 h38 v14 h-38 z"/>
+    <path d="M18 69 v-8 M18 65 h5 M23 61 v8 M27 61 l1.6 8 l2 -5.5 l2 5.5 l1.6 -8 M38 69 v-8 h3 q3 0 3 3 t-3 3 h-3" stroke-width="1.6"/>
+    <path ${S} d="M60 44 q8 -6 16 0" stroke="var(--acc, #2563eb)"/>
+    <path ${S} d="M71 39 l6 5 l-7 4" stroke="var(--acc, #2563eb)"/>
+    <path ${S} d="M82 16 l20 0 l9 9 l0 50 l-29 0 z" fill="#fffdf7"/>
+    <path ${S} d="M102 16 l0 9 l9 0"/>
+    <path ${A} d="M85 50 h23 v12 h-23 z"/>
+    <path d="M88 60 v-8 h3 q3 0 3 3 t-3 3 h-3 M97 52 v8 h2 q4 0 4 -4 t-4 -4 h-2 M106 60 v-8 h4 M106 56 h3" stroke-width="1.6"/>`,
   // 스테이플러 = 합치기
   "pdf-merge": `
     <path ${A} d="M20 47 L95 39 Q104 38 104 45 L104 47 L22 55 Z"/>

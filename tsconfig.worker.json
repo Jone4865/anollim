@@ -3,6 +3,6 @@
   "compilerOptions": {
     "lib": ["ES2023", "WebWorker"]
   },
-  "include": ["src/pdf-worker.ts", "src/pdf-lib.d.ts"],
+  "include": ["src/pdf-worker.ts", "src/pdf-lib.d.ts", "src/hwp-worker.ts", "src/rhwp.d.ts", "src/hwp-lib.ts", "src/hwp-export.ts", "src/lib.ts"],
   "exclude": []
 }

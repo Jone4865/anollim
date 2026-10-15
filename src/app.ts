@@ -4,12 +4,15 @@ import { mountMerge, mountSplit, mountOrganize, mountPdfCompress } from "./tools
 import { mountImgToPdf, mountCompress, mountExif } from "./tools-img.js";
 import { mountBg } from "./tools-bg.js";
 import { mountMask } from "./tools-mask.js";
+import { mountHwp } from "./tools-hwp.js";
 import { art } from "./art.js";
 
 /** 도구 화면이 돌려주는 것 (없으면 {}) */
 export interface Mounted { unmount?: () => void; onPaste?: (files: File[]) => void }
 interface Tool { id: string; title: string; desc: string; mount: (body: HTMLElement) => Mounted | void }
 const TOOLS: Tool[] = [
+  // 찾는 사람이 가장 많아서 맨 앞. Word·텍스트 내보내기를 켜면 설명을 "PDF·Word·그림·텍스트로 저장해요."로 바꿔요(HWP_SPEC 6-1)
+  { id: "hwp-view", title: "HWP 보기 · 변환", desc: "한글 문서(HWP·HWPX)를 설치 없이 열어 보고, PDF·쪽 그림으로 저장해요.", mount: mountHwp },
   { id: "pdf-merge", title: "PDF 합치기", desc: "여러 PDF를 원하는 순서로 하나로 합쳐요.", mount: mountMerge },
   { id: "pdf-split", title: "PDF 나누기 · 페이지 빼기", desc: "필요한 쪽만 골라 새 PDF로, 한 쪽씩 또는 범위로 나눠요.", mount: mountSplit },
   { id: "pdf-organize", title: "PDF 회전 · 순서 바꾸기", desc: "썸네일을 보면서 돌리고, 옮기고, 지운 뒤 저장해요.", mount: mountOrganize },

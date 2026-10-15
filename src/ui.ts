@@ -201,6 +201,7 @@ export const LIMITS = {
   pdfFile: 300 * 1024 * 1024,
   imageFile: 60 * 1024 * 1024,
   bgFile: 30 * 1024 * 1024,
+  hwpFile: 100 * 1024 * 1024,
 };
 export function filterFiles(files: File[], kinds: string[], maxBytes: number, report: (msg: string) => void): File[] {
   const ok: File[] = [], bad: string[] = [];
@@ -321,7 +322,7 @@ export function thumbRenderer(doc: PdfjsDocument, width = 220): ThumbRenderer {
 }
 
 /* ───── 이미지 읽기 ───── */
-const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+export const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 export const MAX_PIXELS = IS_IOS ? 16_000_000 : 50_000_000;
 
 let heicP: Promise<HeicToModule> | null = null;

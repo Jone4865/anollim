@@ -13,5 +13,5 @@
     "allowImportingTsExtensions": false
   },
   "include": ["src", "test", "vite.config.ts"],
-  "exclude": ["src/pdf-worker.ts"]
+  "exclude": ["src/pdf-worker.ts", "src/hwp-worker.ts"]
 }

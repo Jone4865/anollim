@@ -59,21 +59,34 @@
   <main class="sheet">
     <h1>오픈소스 라이선스</h1>
     <p class="lead">집문서는 아래 오픈소스 덕분에 만들 수 있었어요. 집문서 자체도 <a href="https://github.com/Jone4865/jipmunseo" target="_blank" rel="noopener">GNU AGPL-3.0 으로 소스를 공개</a>해요.</p>
-    <p class="file"><a href="/third-party-licenses.txt">전체 고지문 보기 (third-party-licenses.txt)</a><span>저작권 문구와 라이선스 원문(MIT·Apache-2.0·LGPL-3.0·GPL-3.0·AGPL-3.0)을 모두 담았어요.</span></p>
+    <p class="file"><a href="/third-party-licenses.txt">전체 고지문 보기 (third-party-licenses.txt)</a><span>저작권 문구와 라이선스 원문(MIT·Apache-2.0·LGPL-3.0·GPL-3.0·AGPL-3.0·OFL-1.1·BSD·Zlib·ISC 등)을 모두 담았어요.</span></p>
 
     <h2>이 사이트가 함께 싣는 라이브러리</h2>
     <p>아래 파일은 이 사이트의 <code>/vendor/</code> 에서 그대로 내려받아져요.</p>
     <table>
       <thead><tr><th>이름 · 버전</th><th>라이선스</th><th>어디에 쓰나요</th></tr></thead>
       <tbody>
-        <tr><td>pdf-lib 1.17.1<small>© 2019 Andrew Dillon · 안에 pako(MIT·zlib), @pdf-lib/standard-fonts·upng(MIT), tslib(Apache-2.0)</small></td><td><span class="lic">MIT</span></td><td>PDF 합치기·나누기·회전·용량 줄이기, 이미지 → PDF, 사본 PDF</td></tr>
+        <tr><td>rhwp (@rhwp/core) 0.8.7<small>© 2025-2026 Edward Kim · 고치지 않은 npm 배포본 · 안의 Rust 크레이트(MIT·Apache-2.0·BSD·Zlib·ISC 등) 목록은 <a href="/vendor/rhwp-0.8.7/THIRD_PARTY_LICENSES.md">THIRD_PARTY_LICENSES.md</a></small></td><td><span class="lic">MIT</span></td><td>한글 문서(HWP·HWPX·HWP 3.0) 열어 보기, 쪽 그리기</td></tr>
+        <tr><td>Noto Serif KR · Noto Sans KR Regular<small>rhwp v0.8.7 assets/fonts(Google Fonts Noto Serif KR·Noto Sans KR을 줄인 서브셋) · Noto Serif KR: (c) 2017-2024 Adobe (http://www.adobe.com/). / Copyright 2012 Google Inc. All Rights Reserved. · Noto Sans KR: Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'</small></td><td><span class="lic">OFL-1.1</span></td><td>한글 문서 쪽을 그릴 때 쓰는 글꼴(기기 안에서 쪽 그림에만 넣어요)</td></tr>
+        <tr><td>pdf-lib 1.17.1<small>© 2019 Andrew Dillon · 안에 pako(MIT·zlib), @pdf-lib/standard-fonts·upng(MIT), tslib(Apache-2.0)</small></td><td><span class="lic">MIT</span></td><td>PDF 합치기·나누기·회전·용량 줄이기, 이미지 → PDF, 사본 PDF, 한글 문서 → PDF</td></tr>
         <tr><td>PDF.js 4.10.38<small>© 2024 Mozilla Foundation · cmaps·기본 글꼴은 각자 라이선스 파일 동봉</small></td><td><span class="lic">Apache-2.0</span></td><td>PDF 쪽 미리보기, 사본 가리기·용량 줄이기에서 쪽 그리기</td></tr>
-        <tr><td>fflate 0.8.2<small>© 2023 Arjun Barrett</small></td><td><span class="lic">MIT</span></td><td>여러 파일을 ZIP 으로 묶기</td></tr>
+        <tr><td>fflate 0.8.2<small>© 2023 Arjun Barrett</small></td><td><span class="lic">MIT</span></td><td>여러 파일을 ZIP 으로 묶기(한글 문서 쪽 그림 ZIP 포함)</td></tr>
         <tr><td>exifr 7.1.3<small>© 2020 Mike Kovařík, Mutiny.cz</small></td><td><span class="lic">MIT</span></td><td>사진 속 위치·카메라 정보 읽기</td></tr>
         <tr><td>heic-to 1.5.2<small>Hopper Gee · 안에 libheif 1.22.2, libde265 1.0.16(LGPL-3.0, Struktur AG·Dirk Farin), Emscripten(MIT)</small></td><td><span class="lic">LGPL-3.0</span></td><td>아이폰 HEIC 사진 열기</td></tr>
         <tr><td>@imgly/background-removal 1.7.0<small>IMG.LY · <b>집문서가 일부 고침</b> · 안에 onnxruntime-web 1.21.0(MIT, Microsoft), lodash-es·zod·iota-array·is-buffer(MIT)</small></td><td><span class="lic">AGPL-3.0</span></td><td>사진 배경 지우기</td></tr>
       </tbody>
     </table>
+
+    <h2>한글 문서 형식 고지</h2>
+    <p>HWP 보기 · 변환 도구는 한컴이 공개한 한글 문서 파일 형식 문서를 바탕으로 만든 오픈소스 rhwp로 문서를 열고, 배포용 문서의 복사·인쇄 제한 표시를 읽는 부분은 공개 문서를 참고해 집문서가 직접 만들었어요. 공개 문서의 이용 조건에 따라 아래 문구를 적어요.</p>
+    <ul>
+      <li>본 제품은 한컴의 HWP 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.</li>
+      <li>본 제품은 한글과컴퓨터의 한글 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.</li>
+    </ul>
+    <p>출처: 한컴 「HWP 문서 파일 형식」 공개 페이지(<code>store.hancom.com/etc/hwpDownload.do</code>)의 사용권 및 저작권 안내, 「한글 문서 파일 형식 5.0」 revision 1.3 저작권 쪽. 한컴은 결과물의 정확성을 보증하지 않아요.</p>
+
+    <h2>상표</h2>
+    <p>한글·한컴·HWP·HWPX는 ㈜한컴(옛 ㈜한글과컴퓨터)의 상표예요. 집문서는 한컴과 제휴·후원·승인 관계가 없는 독립 도구예요. Microsoft Word는 Microsoft Corporation의 상표이고, 카카오톡은 ㈜카카오의 상표예요.</p>
 
     <h2>LGPL 라이브러리(heic-to) 안내</h2>
     <ul>
