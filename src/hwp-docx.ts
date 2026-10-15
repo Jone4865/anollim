@@ -1,3 +1,4 @@
+// 본 제품은 한컴의 HWP 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
 // 블록 모델 → Word(.docx). OOXML(ECMA-376) 부품을 직접 써요: [Content_Types].xml · _rels/.rels · word/document.xml
 // · word/styles.xml · word/_rels/document.xml.rels · (있을 때만) word/settings.xml · footnotes.xml · endnotes.xml · header*.xml · footer*.xml · media/*.
 // 압축은 집문서에 이미 있는 fflate(zipSync)를 받아 써요. docx 패키지를 쓰지 않은 이유는 HWP_SPEC 12-4-5.

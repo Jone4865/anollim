@@ -294,6 +294,11 @@ input[type="range"] { width: 100%; accent-color: var(--acc); min-height: 32px; }
 .hwp-share { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
 .hwp-share .hint { margin: 6px 0 0; }
 .hwp-again { margin-top: 8px; }
+.hwp-pwnote { margin-top: 10px; color: var(--ink); }
+/* 진행 표시 + 취소(내보내기 중에만) */
+.hwp-progress { display: flex; align-items: stretch; gap: 10px; min-width: 0; }
+.hwp-progress > .progress { flex: 1 1 auto; min-width: 0; }
+.hwp-cancel { flex: none; margin-top: 18px; }
 .hwp-bold { margin: 8px 0 0 !important; color: var(--ink); flex-wrap: wrap; row-gap: 2px; }
 .hwp-bold small { color: var(--muted); font-weight: 500; font-size: 13px; }
 .hwp-bold-state { color: var(--acc-ink); font-size: 13px; font-weight: 700; }

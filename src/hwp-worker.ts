@@ -10,6 +10,19 @@ import { buildDocx, normalizeImages, pageSetupFromHwp, A4, type ZipSync } from "
 const WASM = "/vendor/rhwp-0.8.7/rhwp_bg.wasm";
 const FFLATE = "/vendor/fflate-0.8.2.mjs"; // 집문서에 이미 있는 zip 라이브러리. Word 를 고를 때만 받아요
 let ready: Promise<unknown> | null = null;
+
+/**
+ * WASM 을 받아요. 배포 틈에 없는 주소가 HTML·404 로 오거나, 그런 응답이 브라우저 캐시(/vendor/* 는 1년 immutable)에
+ * 남아 있으면 한 번은 캐시를 건너뛰고(cache: "reload") 새로 받아 캐시도 고쳐 둬요. 그래도 아니면 'load' 오류예요.
+ */
+async function fetchWasm(): Promise<Response> {
+  const ok = (r: Response) => r.ok && (r.headers.get("content-type") ?? "").split(";")[0].trim() === "application/wasm";
+  const r = await fetch(WASM);
+  if (ok(r)) return r;
+  const again = await fetch(WASM, { cache: "reload" });
+  if (ok(again)) return again;
+  throw new Error(`wasm ${again.status} ${again.headers.get("content-type") ?? ""}`);
+}
 let doc: HwpDocument | null = null;
 
 type Msg =
@@ -36,7 +49,7 @@ self.onmessage = async (ev: MessageEvent<Msg>) => {
   const { id, op } = ev.data;
   try {
     try {
-      ready ||= init({ module_or_path: WASM }).catch((e) => { ready = null; throw e; }); // 받기 실패면 다음에 다시
+      ready ||= init({ module_or_path: fetchWasm() }).catch((e) => { ready = null; throw e; }); // 받기 실패면 다음에 다시
       await ready;
     } catch (e) {
       post({ id, type: "error", code: "load", message: String((e as Error)?.message ?? e) });
@@ -66,7 +79,9 @@ self.onmessage = async (ev: MessageEvent<Msg>) => {
       const d = doc;
       const warn: Warn = {};
       const onProgress = (done: number, total: number) => post({ id, type: "progress", done, total });
-      const model = collectDocument(d, warn, { images: op === "docx", headerFooter: op === "docx", onProgress });
+      // 한컴 전용 영역 글자(PUA)를 화면과 같은 표로 보통 글자로 바꿔요. 표(약 50KB)는 내보낼 때만 받아요
+      const { puaFixer } = await import("./hwp-pua.js");
+      const model = collectDocument(d, warn, { images: op === "docx", headerFooter: op === "docx", onProgress, fixText: puaFixer(warn) });
       if (op === "txt") { post({ id, type: "done", result: { text: blocksToText(model.blocks), warn } }); return; }
       post({ id, type: "progress", done: 1, total: 1, phase: "pack" });
       const { zipSync } = (await import(/* @vite-ignore */ FFLATE)) as { zipSync: ZipSync };

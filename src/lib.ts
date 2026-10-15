@@ -281,3 +281,69 @@ export function rectAt(rects: readonly Rect[], x: number, y: number): number {
   }
   return -1;
 }
+
+/* ───── ZIP 을 한 파일씩 이어 붙이기 (fflate 0.8.2 스트리밍 Zip + ZipPassThrough, 압축 없음) ───── */
+/** fflate 의 스트리밍 Zip 중 쓰는 모양만 */
+export interface FflateZipEntry { push(chunk: Uint8Array, final?: boolean): void }
+export interface FflateStreamModule {
+  Zip: new (cb: (err: Error | null, chunk: Uint8Array, final: boolean) => void) => { add(f: FflateZipEntry): void; end(): void; terminate(): void };
+  ZipPassThrough: new (name: string) => FflateZipEntry;
+}
+export interface ZipWriter {
+  /** 파일 하나를 넣어요. 바이트는 이 자리에서 Blob 조각으로 넘기고 들고 있지 않아요 */
+  add(name: string, data: Uint8Array): void;
+  /** 끝을 써서 ZIP Blob 하나로 */
+  finish(): Blob;
+  /** 그만둬요(모은 조각을 버려요) */
+  abort(): void;
+  readonly count: number;
+}
+/**
+ * 파일을 넣는 대로 ZIP 조각을 Blob 으로 넘겨요. 모든 파일을 배열로 모았다가 한꺼번에 묶으면 결과의 3~4배가 메모리에 같이 있게 돼서,
+ * 쪽 그림처럼 큰 파일 여러 개를 묶을 때 써요. PNG·JPEG 는 이미 압축돼 있어서 그대로 넣어요(ZipPassThrough).
+ * 한글 이름은 fflate 가 UTF-8 표시(일반 목적 플래그 bit 11)를 켜요.
+ */
+export function zipWriter(ff: FflateStreamModule, type = "application/zip"): ZipWriter {
+  let parts: Blob[] = [];
+  let pending: Uint8Array[] = [];
+  let failed: Error | null = null;
+  let count = 0;
+  const z = new ff.Zip((err, chunk) => { if (err) failed = err; else if (chunk) pending.push(chunk); });
+  const flush = () => { if (pending.length) { parts.push(new Blob(pending as BlobPart[])); pending = []; } };
+  const check = () => { if (failed) throw new Error("ZIP을 만들지 못했어요."); };
+  return {
+    add(name, data) {
+      check();
+      const f = new ff.ZipPassThrough(name);
+      z.add(f);
+      f.push(data, true);
+      check();
+      count++;
+      flush();
+    },
+    finish() {
+      z.end();
+      check();
+      flush();
+      const out = new Blob(parts, { type });
+      parts = [];
+      return out;
+    },
+    abort() {
+      try { z.terminate(); } catch { /* 이미 끝났어요 */ }
+      parts = []; pending = [];
+    },
+    get count() { return count; },
+  };
+}
+/** ZIP 안에서 이름이 겹치지 않게: 같은 이름이 있으면 '이름-2.확장자', '이름-3.확장자' … (used 에 넣어 둬요) */
+export function uniqueName(name: string, used: Set<string>): string {
+  let out = name;
+  if (used.has(out)) {
+    const dot = name.lastIndexOf(".");
+    const [base, ext] = dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ""];
+    for (let i = 2; used.has(out); i++) out = `${base}-${i}${ext}`;
+  }
+  used.add(out);
+  return out;
+}

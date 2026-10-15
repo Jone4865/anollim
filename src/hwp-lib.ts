@@ -175,5 +175,21 @@ export function hwpErrorCode(msg: string): HwpErr {
 }
 /** 화질(dpi): 150 보통 · 200 선명하게 · 300 인쇄용 (0장 결정 2번) */
 export type HwpDpi = 150 | 200 | 300;
-/** 그림 PDF 예상 크기(KB). 실측 쪽당 150dpi 약 230KB · 200dpi 약 340KB (HWP_SPEC 3-5), 300dpi 는 헤드리스 Chrome 실측 약 590KB(문체부 21334)를 넉넉히 */
+/**
+ * 그림 PDF 예상 크기(KB). 실측 쪽당 150dpi 약 230KB · 200dpi 약 340KB (HWP_SPEC 3-5), 300dpi 는 넉넉히 640KB.
+ * Chrome 다시 잰 값(2026-10-15, 공개 시험 문서 4개): 150dpi 204~267KB · 200dpi 301~391KB · 300dpi 513~661KB — 그대로 맞아요.
+ */
 export const pdfEstimateKB = (pages: number, dpi: HwpDpi) => pages * (dpi === 150 ? 230 : dpi === 200 ? 340 : 640);
+/**
+ * 쪽 그림(PNG) 예상 크기(KB) 범위 [작게, 크게]. Chrome 실측(2026-10-15, 공개 시험 문서 4개 — 문체부 보도자료 3건·rhwp 시험 파일 24쪽) 쪽당
+ * 150dpi 388~466KB · 200dpi 578~723KB · 300dpi 987~1,312KB 를 조금 넓혀 잡았어요. 예전 값(resvg 로 잰 150dpi 300KB)은 Chrome 보다 20~30% 작았어요.
+ * 사진이 많은 문서는 더 커질 수 있어요.
+ */
+const PNG_KB: Record<HwpDpi, readonly [number, number]> = { 150: [380, 480], 200: [570, 730], 300: [980, 1320] };
+export const pngEstimateKB = (pages: number, dpi: HwpDpi): [number, number] => [pages * PNG_KB[dpi][0], pages * PNG_KB[dpi][1]];
+/**
+ * PDF·쪽 그림을 한 번에 만드는 최대 쪽 수(화질별). 쪽마다 캔버스는 바로 비우지만(300dpi A4 한 장이 약 35MB) 결과는 끝까지 갖고 있어서
+ * 화질이 높을수록 줄여요(Chrome 실측 쪽당 쪽 그림 0.4·0.6·1MB, PDF 0.24·0.35·0.6MB). 아이폰·아이패드는 메모리가 더 작아요.
+ * 150dpi 는 설계(12-10) 그대로, 200·300dpi 는 그림 넓이(1.8배·4배)를 보고 줄였어요.
+ */
+export const maxExportPages = (dpi: HwpDpi, ios: boolean): number => (ios ? { 150: 40, 200: 25, 300: 15 } : { 150: 100, 200: 60, 300: 40 })[dpi];

@@ -1,6 +1,12 @@
 // public/vendor/ 의 고정 버전 라이브러리(일부는 CSP 에 맞게 고친 빌드)를 그 주소 그대로, 처음 쓸 때 불러와요.
 // Vite 가 다시 묶지 않게 @vite-ignore 로 주소를 넘기고, 쓰는 API 만 아래에 타입으로 적어요.
-export const vendorImport = <T>(url: string): Promise<T> => import(/* @vite-ignore */ url) as Promise<T>;
+// 못 불러오면 배포 틈에 받은 HTML·404 가 브라우저 캐시(/vendor/* 는 1년 immutable)에 남았을 수 있어서, 캐시를 건너뛰고 한 번 새로 받아
+// 캐시를 고쳐 둬요(같은 페이지에서는 실패한 import 를 브라우저가 기억해서, 고친 캐시는 새로고침 뒤부터 쓰여요).
+export const vendorImport = <T>(url: string): Promise<T> =>
+  (import(/* @vite-ignore */ url) as Promise<T>).catch((e: unknown) => {
+    void fetch(url, { cache: "reload" }).catch(() => {});
+    throw e;
+  });
 
 /* ───── pdf-lib 1.17.1: PDF 워커에서만 써서 타입은 src/pdf-lib.d.ts 의 "vendor:pdf-lib" 모듈에 있어요 ───── */
 export type { PdfLibDocument, PdfLibPage, PdfLibModule } from "vendor:pdf-lib";
@@ -32,10 +38,8 @@ export interface HeicToModule {
 }
 
 /* ───── fflate 0.8.2 (/vendor/fflate-0.8.2.mjs) ───── */
-export type ZipInput = Record<string, [Uint8Array, { level: 0 }]>;
-export interface FflateModule {
-  zip(data: ZipInput, opts: { level: 0 }, cb: (err: Error | null, data: Uint8Array<ArrayBuffer>) => void): void;
-}
+// 스트리밍 Zip(Zip·ZipPassThrough)만 써요 — 모양은 lib.ts 의 FflateStreamModule(워커·시험에서도 같이 써서 거기에 둬요)
+export type { FflateStreamModule as FflateModule } from "./lib.js";
 
 /* ───── exifr 7.1.3 (/vendor/exifr-7.1.3.mjs) ───── */
 export interface ExifData {

@@ -65,3 +65,31 @@ test("머리말·꼬리말·각주·미주: Word 로 옮기고, 텍스트엔 각
     d.free();
   }
 });
+
+test("한컴 전용 영역 글자(PUA): 본문·머리말·각주를 화면과 같은 글자로 옮기고, 못 바꾼 것은 세요", async () => {
+  const { puaFixer } = await import("../src/hwp-pua.js");
+  const d = rhwp.HwpDocument.createEmpty(); d.createBlankDocument(); // 시험용 편집 API(서비스에서는 안 씀)
+  // rhwp 공개 시험 파일(HWP5-nopassword)의 문장 + 한컴 규격 문서의 옛한글 '\u1112\u119E\u11AB글'(U+F53A) + 표에 없는 PUA 하나
+  d.insertText(0, 0, 0, "커서를 놓고 \u{F03A0}를 누르면 \uF53A글 \u{F0123}");
+  d.createHeaderFooter(0, true, 0);
+  d.insertTextInHeaderFooter(0, true, 0, 0, 0, "\u{F03EF}\u{F03F0}\u{F03F1}\u{F03F2}\u{F03F3}\u{F03F4}");
+  const fn = JSON.parse(d.insertFootnote(0, 0, 3));
+  d.insertTextInFootnote(0, 0, fn.controlIdx, 0, 0, "각주 \u{F0854}책\u{F0855}");
+  const warn: Warn = {};
+  const m = collectDocument(d, warn, { headerFooter: true, fixText: puaFixer(warn) });
+  assert.equal(warn.pua, 1);
+  const txt = blocksToText(m.blocks);
+  assert.match(txt, /커서를\[각주 1\] 놓고 ↵를 누르면 \u1112\u119E\u11AB글 \u{F0123}/u);
+  assert.match(txt, /\[각주 1\] 각주 《책》/);
+  assert.doesNotMatch(txt, /\u{F03A0}|\uF53A|\u{F0854}/u);
+  const files = ff.unzipSync(buildDocx(m.blocks, pageSetupFromHwp(JSON.parse(d.getPageDef(0))), ff.zipSync, { hf: m.hf }));
+  const xml = dec.decode(files["word/document.xml"]);
+  assert.match(xml, /↵를 누르면 \u1112\u119E\u11AB글/);
+  assert.doesNotMatch(xml, /\u{F03A0}/u);
+  assert.match(dec.decode(files["word/header1.xml"]), /한글과컴퓨터/);
+  assert.match(dec.decode(files["word/footnotes.xml"]), /각주 《책》/);
+  // fixText 를 안 넣으면 예전처럼 그대로예요(화면·시험 코드가 따로 부를 때)
+  const raw = blocksToText(collectBlocks(d));
+  assert.match(raw, /\u{F03A0}/u);
+  d.free();
+});

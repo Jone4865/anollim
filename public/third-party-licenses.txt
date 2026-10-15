@@ -405,8 +405,18 @@ A7. rhwp (@rhwp/core) 0.8.7 - MIT
 ------------------------------------------------------------------------------
 Files: /vendor/rhwp-0.8.7/rhwp.js, /vendor/rhwp-0.8.7/rhwp_bg.wasm
        (unmodified npm build of @rhwp/core@0.8.7)
+       /js/hwp-pua-*.js (built from src/hwp-pua.ts and src/hwp-pua-oldhangul.ts):
+       character tables ported from rhwp v0.8.7 source - src/renderer/hancom_pua.rs,
+       src/renderer/pua_oldhangul.rs, the map_pua_bullet_char table in
+       src/renderer/layout/paragraph_layout.rs, the PUA order of
+       src/renderer/composer.rs and HANCOM_SYMBOL_BMP_TO_PLANE15 in src/parser/tags.rs.
+       The Old Hangul table in pua_oldhangul.rs comes from the KTUG
+       HanyangPuaTableProject (hypua2jamocomposed.txt), which its authors
+       placed in the Public Domain.
 Source: https://github.com/edwardkim/rhwp (tag v0.8.7)
-Used for: opening and drawing HWP / HWPX / HWP 3.0 documents (HWP viewer tool)
+Used for: opening and drawing HWP / HWPX / HWP 3.0 documents (HWP viewer tool);
+          turning Hancom private-use characters into standard Unicode when
+          saving as Word / text
 
 MIT License
 

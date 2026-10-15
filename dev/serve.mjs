@@ -23,7 +23,12 @@ http.createServer((req, res) => {
   if (!f.startsWith(root)) { res.writeHead(403); return res.end(); }
   if (fs.existsSync(f) && fs.statSync(f).isDirectory()) f = path.join(f, "index.html");
   if (!fs.existsSync(f) && fs.existsSync(f + ".html")) f += ".html"; // Pages 처럼 /licenses → licenses.html
-  if (!fs.existsSync(f)) { res.writeHead(404); return res.end("not found"); }
+  if (!fs.existsSync(f)) { // Pages 처럼 404.html 이 있으면 그걸 404 로(첫 화면으로 대신 답하지 않아요)
+    const nf = path.join(root, "404.html");
+    if (!fs.existsSync(nf)) { res.writeHead(404); return res.end("not found"); }
+    res.writeHead(404, { "Content-Type": MIME[".html"] });
+    return fs.createReadStream(nf).pipe(res);
+  }
   res.setHeader("Content-Type", MIME[path.extname(f).toLowerCase()] || "application/octet-stream");
   fs.createReadStream(f).pipe(res);
 }).listen(port, () => console.log(`http://localhost:${port}`));

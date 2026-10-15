@@ -3,7 +3,7 @@ import fs from "node:fs";
 import { test } from "vitest";
 import assert from "node:assert/strict";
 import {
-  sniffHwp, distributionFlags, decodeDistributeDocData, distributeKeyArray, hwpPolicy, hwpErrorCode, pdfEstimateKB,
+  sniffHwp, distributionFlags, decodeDistributeDocData, distributeKeyArray, hwpPolicy, hwpErrorCode, pdfEstimateKB, pngEstimateKB, maxExportPages,
   type HwpSniff, type HwpPolicy, type DistFlags,
 } from "../src/hwp-lib.js";
 
@@ -123,4 +123,21 @@ test("pdfEstimateKB: 쪽당 150dpi 230KB · 200dpi 340KB · 300dpi 640KB", () =>
   assert.equal(pdfEstimateKB(24, 150), 5520);
   assert.equal(pdfEstimateKB(2, 200), 680);
   assert.equal(pdfEstimateKB(2, 300), 1280);
+});
+
+test("pngEstimateKB: Chrome 실측 범위(쪽당 150dpi 380~480KB · 200dpi 570~730KB · 300dpi 980~1,320KB)", () => {
+  assert.deepEqual(pngEstimateKB(24, 150), [9120, 11520]);
+  assert.deepEqual(pngEstimateKB(2, 200), [1140, 1460]);
+  assert.deepEqual(pngEstimateKB(24, 300), [23520, 31680]);
+  // Chrome 에서 잰 결과가 범위 안에 들어요(rhwp 시험 파일 24쪽: 9.09MB · 13.5MB · 23.8MB, 문체부 21334 2쪽 150dpi 784KB)
+  const inRange = ([lo, hi]: [number, number], kb: number) => kb >= lo && kb <= hi;
+  assert.ok(inRange(pngEstimateKB(24, 150), 9530161 / 1024));
+  assert.ok(inRange(pngEstimateKB(24, 200), 14202234 / 1024));
+  assert.ok(inRange(pngEstimateKB(24, 300), 24914026 / 1024));
+  assert.ok(inRange(pngEstimateKB(2, 150), 802422 / 1024));
+});
+
+test("maxExportPages: 화질이 높을수록 한 번에 만드는 쪽 수를 줄여요(아이폰·아이패드는 더)", () => {
+  assert.deepEqual([150, 200, 300].map((d) => maxExportPages(d as 150 | 200 | 300, false)), [100, 60, 40]);
+  assert.deepEqual([150, 200, 300].map((d) => maxExportPages(d as 150 | 200 | 300, true)), [40, 25, 15]);
 });

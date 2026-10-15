@@ -1,6 +1,6 @@
 // 공통 UI 조각 + 라이브러리 로더
-import { formatSize, kindOf, moveItem } from "./lib.js";
-import { vendorImport, type PdfjsModule, type PdfjsDocument, type HeicToModule, type FflateModule, type ZipInput } from "./vendor.js";
+import { formatSize, kindOf, moveItem, zipWriter, uniqueName } from "./lib.js";
+import { vendorImport, type PdfjsModule, type PdfjsDocument, type HeicToModule, type FflateModule } from "./vendor.js";
 
 /* ───── DOM 도우미 ───── */
 /** h() 속성: class · html · on<이벤트> · dataset · 그 밖의 속성(true 면 빈 값, null/false 면 생략) */
@@ -407,11 +407,19 @@ export async function thumbURL(img: DecodedImage, size = 120): Promise<string> {
 }
 
 /* ───── ZIP ───── */
+/** fflate(zip) — 처음 쓸 때 한 번 받아요 */
+export const loadFflate = (): Promise<FflateModule> => vendorImport<FflateModule>("/vendor/fflate-0.8.2.mjs");
+/** 파일 여러 개를 ZIP 하나로(압축 없음). 한 파일씩 이어 붙여서 결과보다 몇 배 큰 메모리를 한꺼번에 쓰지 않아요. 같은 이름은 '이름-2.확장자'로 */
 export async function makeZip(files: { name: string; blob: Blob }[]): Promise<Blob> {
-  const { zip } = await vendorImport<FflateModule>("/vendor/fflate-0.8.2.mjs");
-  const obj: ZipInput = {};
-  for (const f of files) obj[f.name] = [new Uint8Array(await f.blob.arrayBuffer()), { level: 0 }];
-  return new Promise((res, rej) => zip(obj, { level: 0 }, (err, data) => (err ? rej(new Error("ZIP을 만들지 못했어요.")) : res(new Blob([data], { type: "application/zip" })))));
+  const w = zipWriter(await loadFflate());
+  const used = new Set<string>();
+  try {
+    for (const f of files) w.add(uniqueName(f.name, used), new Uint8Array(await f.blob.arrayBuffer()));
+    return w.finish();
+  } catch {
+    w.abort();
+    throw new Error("ZIP을 만들지 못했어요.");
+  }
 }
 
 /** 붙여넣기(클립보드) 이미지 */

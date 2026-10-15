@@ -1,3 +1,4 @@
+// 본 제품은 한컴의 HWP 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
 // 한글 문서 워커(src/hwp-worker.ts)를 부르는 쪽. pdf 워커와 같은 id·pending 방식이에요.
 //  - 요청은 하나씩 차례로 보내요. 시간 한도는 워커에 보낸 때부터 재요(긴 Word 만들기 뒤에 줄 선 쪽 그리기가 한도를 넘었다고 워커를 버리지 않게).
 //  - 시간 한도(열기 30초, 쪽 그리기 15초, Word 60초, 텍스트 30초)를 넘기거나 WASM 이 멈추면(fatal) 워커를 버리고, 다음 요청 때 새로 만들어요.
@@ -21,6 +22,8 @@ interface Job {
 }
 /** init 은 처음 한 번 WASM(전송 약 3~4MB)을 받는 시간까지라 넉넉히 잡아요. Word·텍스트는 HWP_SPEC 12-10 */
 export const HWP_TIMEOUT = { init: 120_000, open: 30_000, svg: 15_000, docx: 60_000, txt: 30_000 } as const;
+/** 워커가 import 하는 보기 도구 주소(vite.config.ts 의 RHWP 와 같아요) */
+const RHWP_JS = "/vendor/rhwp-0.8.7/rhwp.js";
 
 export class HwpClient {
   private w: Worker | null = null;
@@ -45,6 +48,9 @@ export class HwpClient {
     };
     w.onerror = (e) => {
       e.preventDefault?.();
+      // 배포 틈에 받은 HTML·404 가 브라우저 캐시(/vendor/* 는 1년 immutable)에 남아 워커가 못 떴을 수 있어요.
+      // 캐시를 건너뛰고 한 번 새로 받아 캐시를 고쳐 두면, 다음에 만드는 워커는 제대로 받아요
+      void fetch(RHWP_JS, { cache: "reload" }).catch(() => {});
       this.failAll(new HwpClientError("worker", "보기 도구를 불러오지 못했어요."));
     };
     this.w = w;

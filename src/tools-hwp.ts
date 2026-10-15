@@ -10,18 +10,18 @@
 // 설계: _workspace/review/HWP_SPEC.md (4·5·6·7·12장)
 import { h, icon, dropzone, progress, alertBox, resultItem, seg, toast, runPdf, canvasToBlob, LIMITS, MAX_PIXELS, IS_IOS, type Seg } from "./ui.js";
 import { formatSize, parseRanges, rangesToSet } from "./lib.js";
-import { sniffHwp, distributionFlags, hwpPolicy, hwpErrorCode, pdfEstimateKB, type HwpSniff, type HwpPolicy, type HwpDpi } from "./hwp-lib.js";
+import { sniffHwp, distributionFlags, hwpPolicy, hwpErrorCode, pdfEstimateKB, pngEstimateKB, maxExportPages, type HwpSniff, type HwpPolicy, type HwpDpi } from "./hwp-lib.js";
 import { prepareSvg, pxToPt, FONT_BASE, FAMILY, type FontFace, type Fonts } from "./hwp-svg.js";
 import { exportRules, exportName, warnLines, EXPORT_FORMATS, type ExportFormat, type ExportRule, type Warn } from "./hwp-export.js";
-import { pngResult, shareFilesFor, shareFiles, pngEstimateKB, SHARE_MAX, type PagePng } from "./hwp-export-ui.js";
+import { pngPack, mayShare, shareFilesFor, shareFiles, SHARE_MAX, type PagePng, type PngPack } from "./hwp-export-ui.js";
 import { HwpClient, HwpClientError, type OpenResult, type ExportProgress } from "./hwp-client.js";
 import type { Mounted } from "./app.js";
 
 /* ───── 고정 문구 · 한도 ───── */
 const IS_MOBILE = IS_IOS || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 const MOBILE_WARN_BYTES = 30 * 1024 * 1024;
-/** PDF·쪽 그림을 한 번에 만드는 최대 쪽 수 (아이폰·아이패드는 메모리가 작아요) */
-const MAX_EXPORT = IS_IOS ? 40 : 100;
+/** PDF·쪽 그림을 한 번에 만드는 최대 쪽 수(화질별, hwp-lib.ts maxExportPages) */
+const MAX_EXPORT: Record<HwpDpi, number> = { 150: maxExportPages(150, IS_IOS), 200: maxExportPages(200, IS_IOS), 300: maxExportPages(300, IS_IOS) };
 const JPEG_Q = 0.85;
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 /** 메모리가 적은 기기(Chrome 계열만 알려 줘요). 300dpi 를 고르면 안내를 띄워요 */
@@ -55,6 +55,10 @@ const MSG = {
   exportCrashed: "옮기는 중에 보기 도구가 멈췄어요. 다른 형식으로 저장해 보세요.",
   bigDocxMobile: "큰 문서라 휴대폰에서는 오래 걸리거나 멈출 수 있어요.",
   lowMemory300: "이 기기는 메모리가 적어서 300dpi는 느리거나 멈출 수 있어요. 보통(150dpi)을 권해요.",
+  ios300: "아이폰·아이패드에서는 300dpi가 느리거나 멈출 수 있어요. 보통(150dpi)을 권해요.",
+  cancelling: "멈추는 중… 지금 그리는 쪽까지만 마치고 멈춰요.",
+  cancelled: "만들기를 취소했어요.",
+  pwNote: "저장한 파일에는 암호가 걸려 있지 않아요. 다른 사람에게 보낼 때 주의해 주세요.",
   boldFail: "굵은 글꼴을 받지 못했어요. 인터넷 연결을 확인하고 다시 켜 주세요.",
   hwp3: "아주 예전 한글(3.0) 문서예요. 모양이 더 많이 다를 수 있어요.",
   reason: {
@@ -84,9 +88,15 @@ const FORMAT_CARD: Record<ExportFormat, { title: string; tag: string; shape: boo
 /* ───── 글꼴(Noto Serif KR·Noto Sans KR, OFL) — 처음 한 번 받아 메모리에만 둬요. 굵은 것(Bold)은 켰을 때만 ───── */
 let fontsP: Promise<Fonts> | null = null;
 let boldP: Promise<Fonts> | null = null;
+/**
+ * 글꼴 하나를 받아요. 글꼴(font/woff2)이 아니면 쓰지도 기억하지도 않아요. 배포 틈에 없는 주소가 HTML·404 로 오거나
+ * 그런 응답이 브라우저 캐시(/vendor/* 는 1년 immutable)에 남아 있으면, 한 번은 캐시를 건너뛰고(cache: "reload") 새로 받아 캐시도 고쳐 둬요.
+ */
 async function fetchFace(file: string, family: string, weight: 400 | 700 = 400): Promise<FontFace> {
-  const r = await fetch(FONT_BASE + file);
-  if (!r.ok) throw new Error("font " + r.status);
+  const isFont = (r: Response) => r.ok && (r.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase() === "font/woff2";
+  let r = await fetch(FONT_BASE + file);
+  if (!isFont(r)) r = await fetch(FONT_BASE + file, { cache: "reload" });
+  if (!isFont(r)) throw new Error(`font ${r.status} ${r.headers.get("content-type") ?? ""}`);
   const blob = await r.blob();
   const url = await new Promise<string>((res, rej) => {
     const fr = new FileReader();
@@ -163,6 +173,9 @@ export function mountHwp(root: HTMLElement): Mounted {
   const err = alertBox();
   const warn = alertBox();
   const prog = progress();
+  /* 내보내기 취소: 진행 표시 옆. PDF·쪽 그림은 다음 쪽부터 멈추고, Word·텍스트는 워커를 버리고 원본으로 다시 열어요 */
+  const cancelBtn = h("button", { type: "button", class: "btn sm hwp-cancel", hidden: true, onclick: () => cancelExport() }, "취소");
+  const progRow = h("div", { class: "hwp-progress" }, prog.el, cancelBtn);
   const dz = dropzone({
     accept: "", multiple: false, // 휴대폰 파일 선택기가 .hwp 를 회색으로 막지 않게 모든 파일을 받고 내용으로 가려요
     title: "HWP·HWPX 파일을 끌어다 놓으세요", sub: "한글 문서 · .hwp · .hwpx · 100MB까지 · 이 기기 안에서만 열어요",
@@ -260,7 +273,7 @@ export function mountHwp(root: HTMLElement): Mounted {
     h("p", {}, "한글·한컴·HWP·HWPX는 ㈜한컴(옛 ㈜한글과컴퓨터)의 상표예요. 집문서는 한컴과 제휴·후원·승인 관계가 없는 독립 도구예요."),
     h("p", {}, "문서 보기: ", h("a", { href: "https://github.com/edwardkim/rhwp", target: "_blank", rel: "noopener" }, "rhwp"), " (MIT) · ", h("a", { href: "/licenses" }, "라이선스 고지")));
 
-  tool.append(dz, err.el, warn.el, pwPanel, viewer, prog.el, out, legal);
+  tool.append(dz, err.el, warn.el, pwPanel, viewer, progRow, out, legal);
   root.append(tool);
 
   /* ───── 파일 받기 ───── */
@@ -561,21 +574,29 @@ export function mountHwp(root: HTMLElement): Mounted {
     catch (e) { optHint.className = "hint bad"; optHint.textContent = (e as Error).message; makeBtn.disabled = true; return; }
     optHint.className = "hint";
     makeBtn.disabled = busy || !pages.length;
-    if (pages.length > MAX_EXPORT) {
+    const max = MAX_EXPORT[dpi];
+    if (pages.length > max) {
       optHint.className = "hint bad";
-      optHint.textContent = `한 번에 ${MAX_EXPORT}쪽까지 만들 수 있어요. 쪽 범위를 나눠서 저장해 주세요.`;
+      optHint.textContent = dpi === 150
+        ? `한 번에 ${max}쪽까지 만들 수 있어요. 쪽 범위를 나눠서 저장해 주세요.`
+        : `${dpi}dpi로는 한 번에 ${max}쪽까지 만들 수 있어요. 쪽 범위를 나눠서 저장하거나 화질을 낮춰 주세요.`;
       makeBtn.disabled = true;
       return;
     }
     const mb = (kb: number) => (kb / 1024 < 0.1 ? "0.1" : (kb / 1024).toFixed(1));
+    const [lo, hi] = pngEstimateKB(pages.length, dpi);
+    const pngSize = mb(lo) === mb(hi) ? mb(lo) : `${mb(lo)}~${mb(hi)}`;
     optHint.textContent = (fmt === "png"
-      ? `쪽마다 PNG 한 장 · 예상 크기 약 ${mb(pngEstimateKB(pages.length, dpi))}MB`
+      ? `쪽마다 PNG 한 장 · 예상 크기 약 ${pngSize}MB`
       : `쪽을 그림으로 담은 PDF예요. 인쇄·제출에는 충분하지만 글자 검색·복사는 안 돼요. 예상 크기 약 ${mb(pdfEstimateKB(pages.length, dpi))}MB`)
-      + (dpi === 300 && LOW_MEMORY ? "\n" + MSG.lowMemory300 : "");
+      // 아이폰·아이패드는 기기 메모리 값을 알려 주지 않아서 300dpi 면 늘 안내해요
+      + (dpi === 300 && IS_IOS ? "\n" + MSG.ios300 : dpi === 300 && LOW_MEMORY ? "\n" + MSG.lowMemory300 : "");
   }
 
   /* ───── 내보내기: 만들기 ───── */
-  let lastPngs: PagePng[] = []; // 공유 시트에 다시 쓰려고 결과를 보여 주는 동안만 갖고 있어요
+  let lastPngs: PagePng[] = []; // 공유 시트에 다시 쓸 쪽 그림. 공유할 수 있는 장수(30장 이하)일 때만, 결과를 보여 주는 동안만 갖고 있어요
+  let exportTok = 0; // 내보내기마다 올려요. 취소·다른 파일이면 하나 더 올려서 진행 중이던 만들기의 결과를 버려요
+  let exportFmt: ExportFormat | null = null; // 지금 만드는 형식(형식마다 멈추는 방법이 달라요)
   /** 쪽 하나를 dpi 로 그려요(PDF·쪽 그림 공용) */
   async function renderAt(i: number, type: "image/png" | "image/jpeg"): Promise<Raster> {
     const s = (doc as Doc).info.sizes[i];
@@ -585,90 +606,119 @@ export function mountHwp(root: HTMLElement): Mounted {
     try { return await rasterize(url, Math.round((s.w * dpi) / 96), Math.round((s.h * dpi) / 96), type, type === "image/jpeg" ? JPEG_Q : undefined); }
     finally { URL.revokeObjectURL(url); }
   }
+  function setCancel(on: boolean): void { cancelBtn.hidden = !on; cancelBtn.disabled = false; }
+  /**
+   * 취소(0장 결정 10번). PDF·쪽 그림은 지금 그리는 쪽까지만 마치고 멈춰요(만든 것은 버려요).
+   * Word·텍스트는 워커 안에서 한 번에 돌아서 중간에 멈출 수 없어요 → 워커를 버리고, 끝나면 원본으로 다시 열어 보기를 이어 가요(암호 문서는 암호를 다시 물어요).
+   */
+  function cancelExport(): void {
+    if (!busy || !exportFmt) return;
+    exportTok++;
+    cancelBtn.disabled = true;
+    if (exportFmt === "docx" || exportFmt === "txt") client.dispose(); // 기다리던 요청은 '취소'로 끝나요
+    else prog.set(null, MSG.cancelling);
+  }
   async function runExport(): Promise<void> {
     if (!doc || busy) return;
-    const d = doc, f = fmt, g = gen;
+    const d = doc, f = fmt, g = gen, t = ++exportTok;
+    const alive = () => g === gen && t === exportTok;
     if (!d.rules[f].ok) return; // 막힌 형식은 여기까지 오지 않지만 한 번 더
     const pic = f === "pdf" || f === "png";
     let pages: number[] = [];
     if (pic) {
       try { pages = selectedPages(); } catch (e) { optHint.className = "hint bad"; optHint.textContent = (e as Error).message; return; }
-      if (!pages.length || pages.length > MAX_EXPORT) return;
+      if (!pages.length || pages.length > MAX_EXPORT[dpi]) return;
     }
-    busy = true; makeBtn.disabled = true; err.hide(); out.replaceChildren(); lastPngs = [];
+    busy = true; exportFmt = f; makeBtn.disabled = true; err.hide(); out.replaceChildren(); lastPngs = [];
+    setCancel(true);
     let after: (() => Promise<void>) | null = null; // 끝난 뒤 이어서 할 일(다시 열기)
+    let pack: PngPack | null = null; // 쪽 그림 ZIP(다 끝나기 전에 멈추면 버려요)
     try {
       const total = pages.length;
       if (f === "docx" || f === "txt") {
         prog.set(0, "문서 글을 옮기는 중… 0%");
         const onP = (p: ExportProgress) => {
-          if (g !== gen) return;
+          if (!alive()) return;
           if (p.phase === "pack") { prog.set(0.9, "Word 파일로 묶는 중…"); return; }
           const r = p.total ? Math.min(1, p.done / p.total) : 0;
           prog.set(r * 0.88, `문서 글을 옮기는 중… ${Math.round(r * 100)}%`);
         };
         if (f === "docx") {
           const r = await client.docx(onP);
-          if (g !== gen) return;
+          if (!alive()) return;
+          setCancel(false);
           prog.set(1, "완료!");
           out.replaceChildren(resultBox("Word 파일을 만들었어요",
             resultItem({ name: exportName(d.name, "docx"), blob: new Blob([r.bytes], { type: DOCX_MIME }), extra: "글·표 위주" }),
             diffNote(r.warn, "줄 간격·쪽 나눔은 Word가 다시 정해요.")));
         } else {
           const r = await client.txt(onP);
-          if (g !== gen) return;
+          if (!alive()) return;
+          setCancel(false);
           prog.set(1, "완료!");
           out.replaceChildren(resultBox("텍스트를 만들었어요",
             resultItem({ name: exportName(d.name, "txt"), blob: new Blob([r.text], { type: "text/plain;charset=utf-8" }), extra: "글자만 · UTF-8" }),
             diffNote(r.warn, null)));
         }
       } else if (f === "pdf") {
+        // 쪽 JPEG 는 PDF 워커로 옮겨(transfer) 묶어요. 묶을 때 워커 안에 모든 쪽 + 결과가 같이 있어서, 쪽 수 한도(MAX_EXPORT)를 화질별로 둬요
         const parts: { bytes: Uint8Array<ArrayBuffer>; wPt: number; hPt: number }[] = [];
         for (let k = 0; k < total; k++) {
+          if (!alive()) return;
           prog.set(k / total * 0.9, `${k + 1}/${total}쪽 그리는 중…`);
           const r = await renderAt(pages[k], "image/jpeg");
-          if (g !== gen) return;
+          if (!alive()) return;
           const s = d.info.sizes[pages[k]];
           parts.push({ bytes: new Uint8Array(await r.blob.arrayBuffer()), wPt: pxToPt(s.w), hPt: pxToPt(s.h) });
         }
+        if (!alive()) return;
+        setCancel(false); // 묶기는 금방 끝나요
         prog.set(0.92, "PDF로 묶는 중…");
         const pdf = await runPdf<{ bytes: Uint8Array<ArrayBuffer> }>("pages", { pages: parts }, parts.map((p) => p.bytes.buffer));
-        if (g !== gen) return;
+        if (!alive()) return;
         prog.set(1, "완료!");
         out.replaceChildren(resultBox("PDF를 만들었어요",
           resultItem({ name: exportName(d.name, "pdf"), blob: new Blob([pdf.bytes], { type: "application/pdf" }), extra: `${total}쪽 · 그림 PDF` })));
       } else if (f === "png") {
-        const pngs: PagePng[] = [];
+        // 쪽마다 그리자마자 ZIP 에 넣고 놓아요(0장 결정 2번). 공유 시트로 다시 보낼 수 있는 장수일 때만 그림을 들고 있어요
+        const keep = total === 1 || mayShare(total);
+        const kept: PagePng[] = [];
+        pack = await pngPack(d.name, total, d.info.pages);
         let dims = "";
         for (let k = 0; k < total; k++) {
-          prog.set(k / total * (total > 1 ? 0.9 : 1), `${k + 1}/${total}쪽 그리는 중…`);
+          if (!alive()) return;
+          prog.set(k / total * (total > 1 ? 0.95 : 1), `${k + 1}/${total}쪽 그리는 중…`);
           const r = await renderAt(pages[k], "image/png");
-          if (g !== gen) return;
-          pngs.push({ page: pages[k] + 1, blob: r.blob });
+          if (!alive()) return;
+          const p: PagePng = { page: pages[k] + 1, blob: r.blob };
+          await pack.add(p);
+          if (keep) kept.push(p);
           if (!dims) dims = `${r.w}×${r.h}`;
         }
-        if (total > 1) prog.set(0.92, "ZIP으로 묶는 중…");
-        const res = await pngResult(d.name, pngs, d.info.pages);
-        if (g !== gen) return;
+        if (!alive()) return;
+        setCancel(false);
+        if (total > 1) prog.set(0.97, "ZIP으로 묶는 중…");
+        const res = pack.finish();
+        pack = null;
         prog.set(1, "완료!");
-        lastPngs = pngs;
+        lastPngs = kept;
         const box = resultBox("쪽 그림을 만들었어요",
           resultItem({ name: res.name, blob: res.blob, extra: total > 1 ? `쪽 그림 ${total}장 ZIP` : `${dims} PNG` }));
-        const files = shareFilesFor(d.name, pngs, d.info.pages);
+        const files = shareFilesFor(d.name, kept, d.info.pages);
         if (files) {
-          box.append(h("div", { class: "hwp-share" },
+          box.insertBefore(h("div", { class: "hwp-share" },
             h("button", { type: "button", class: "btn", onclick: async () => {
               const r = await shareFiles(files);
               if (r === "failed") toast("공유하지 못했어요. 내려받아서 보내 주세요.");
             } }, h("span", { html: SHARE_ICON, style: "display:contents" }), "카톡 등으로 보내기"),
-            h("p", { class: "hint" }, "카톡에서 글자가 흐리면 사진 화질을 ‘원본’으로 바꿔 보내 주세요.")));
+            h("p", { class: "hint" }, "카톡에서 글자가 흐리면 사진 화질을 ‘원본’으로 바꿔 보내 주세요.")), box.querySelector(".hwp-again"));
         } else if (total > SHARE_MAX && typeof navigator.canShare === "function") {
-          box.append(h("p", { class: "hint" }, `${SHARE_MAX}장이 넘으면 ZIP으로 받아서 보내 주세요.`));
+          box.insertBefore(h("p", { class: "hint" }, `${SHARE_MAX}장이 넘으면 ZIP으로 받아서 보내 주세요.`), box.querySelector(".hwp-again"));
         }
         out.replaceChildren(box);
       }
     } catch (e) {
-      if (g !== gen) return;
+      if (!alive()) return; // 취소·다른 파일 뒤에 끝난 요청(Word·텍스트는 워커를 버려서 '취소'로 끝나요)
       if (!pic && e instanceof HwpClientError && (e.code === "timeout" || e.code === "fatal")) {
         // 워커를 버렸으니 원본 바이트로 다시 열어요(12-10). 보기는 그대로 이어져요
         const msg = e.code === "fatal" ? MSG.exportCrashed : f === "docx" ? MSG.docxTooBig : MSG.txtTooBig;
@@ -678,15 +728,22 @@ export function mountHwp(root: HTMLElement): Mounted {
       if (e instanceof HwpClientError && (e.code === "fatal" || e.code === "timeout" || e.code === "worker" || e.code === "load")) { failTo(MSG.crashed); return; }
       err.show(e instanceof HwpClientError ? (pic ? "쪽을 그리지 못했어요. 다시 해 주세요." : "문서를 옮기지 못했어요. 다른 형식으로 저장해 보세요.") : (e as Error)?.message || "저장하지 못했어요. 다시 해 주세요.");
     } finally {
+      pack?.abort(); // 다 묶기 전에 멈췄으면 모은 조각을 버려요
       if (g === gen) {
-        busy = false;
+        const cancelled = t !== exportTok;
+        busy = false; exportFmt = null; setCancel(false);
+        // Word·텍스트를 취소했으면 워커를 버렸으니 늘 다시 열어요(그 사이 결과가 왔어도 버려요)
+        if (cancelled && !pic && !after) after = () => reopen(MSG.cancelled, "info");
         if (after) { prog.hide(); void after(); }
+        else if (cancelled) { prog.hide(); out.replaceChildren(); updateOpts(); toast(MSG.cancelled); }
         else { setTimeout(() => { if (!busy) prog.hide(); }, 800); updateOpts(); }
       }
     }
   }
   function resultBox(title: string, item: HTMLElement, note?: HTMLElement | null): HTMLElement {
     return h("div", { class: "result", id: "result" }, h("h2", {}, icon("ok"), title), item, note ?? null,
+      // 암호로 연 문서: 저장한 파일에는 암호가 없어요(설계 밖 안내, 검토 제안)
+      doc?.password ? h("p", { class: "hint hwp-pwnote" }, MSG.pwNote) : null,
       h("button", { type: "button", class: "btn ghost sm hwp-again", onclick: () => { out.replaceChildren(); lastPngs = []; prog.hide(); toggleExport(true); exportBox.scrollIntoView({ block: "nearest" }); } }, "다른 형식으로 저장"));
   }
   /** Word·텍스트: 원본과 다른 점(12-4-4 문구). 늘 붙는 줄(tail)이 있으면 끝에 */
@@ -695,15 +752,18 @@ export function mountHwp(root: HTMLElement): Mounted {
     if (!lines.length) return null;
     return h("div", { class: "alert info hwp-diff" }, h("b", {}, "원본과 다른 점"), h("ul", {}, ...lines.map((l) => h("li", {}, l))));
   }
-  /** Word·텍스트가 시간 한도를 넘겨 워커를 버린 뒤: 원본으로 다시 열어 보기를 이어 가요. 암호 문서는 암호를 남기지 않아서 다시 물어요 */
-  async function reopen(msg: string): Promise<void> {
+  /**
+   * Word·텍스트가 시간 한도를 넘기거나 취소해서 워커를 버린 뒤: 원본으로 다시 열어 보기를 이어 가요.
+   * 암호 문서는 암호를 남기지 않아서 다시 물어요. kind "info" 는 오류가 아닌 알림(취소)
+   */
+  async function reopen(msg: string, kind: "" | "info" = ""): Promise<void> {
     const d = doc, b = bytes;
     if (!d || !b) { failTo(msg); return; }
     if (d.password) {
       reset(true);
       bytes = b; pending = { name: d.name, size: d.size, sniff: d.sniff, policy: d.policy };
       askPassword(false);
-      err.show(msg + " 문서를 다시 열려면 암호를 한 번 더 넣어 주세요.");
+      err.show(msg + " 문서를 다시 열려면 암호를 한 번 더 넣어 주세요.", kind);
       return;
     }
     const g = gen;
@@ -713,12 +773,11 @@ export function mountHwp(root: HTMLElement): Mounted {
       const info = await client.open(b.slice().buffer);
       if (g !== gen) return;
       d.info = info;
-      err.show(msg);
+      err.show(msg, kind);
       void show(); // 줄 서 있다 취소된 쪽이 있었으면 다시 그려요
     } catch { if (g === gen) failTo(msg); }
     finally { if (g === gen) { prog.hide(); busy = false; updateOpts(); } }
   }
-
   /* ───── 정리 ───── */
   /** 열린 문서·워커·blob 주소·원본 바이트를 모두 버려요. toDrop 이면 드롭존으로 */
   function reset(toDrop: boolean): void {
@@ -731,6 +790,7 @@ export function mountHwp(root: HTMLElement): Mounted {
     pageImg.removeAttribute("src");
     stage.replaceChildren(placeholder);
     bytes = null; pending = null; doc = null; cur = 0; busy = false; lastPngs = [];
+    exportTok++; exportFmt = null; setCancel(false); // 진행 중이던 내보내기는 버려요
     pwIn.value = "";
     out.replaceChildren(); err.hide(); warn.hide(); prog.hide();
     exportBox.hidden = true; exportBtn.setAttribute("aria-expanded", "false");

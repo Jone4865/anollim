@@ -17,7 +17,7 @@ https://jipmunseo.pages.dev (Cloudflare Pages · 예전 `*.vercel.app` 주소는
 ## 도구
 | 주소 | 하는 일 | 코드 |
 |---|---|---|
-| `#hwp-view` | **HWP 보기 · 변환**: HWP 5.0·HWPX·HWP 3.0을 rhwp(WASM, 워커)로 열어 쪽 SVG 를 `<img>`(blob)로 보여 줘요(문서 마크업을 페이지 DOM 에 넣지 않음). 내보내기 4형식: 그림 PDF(150/200/300dpi, 쪽 고르기) · **Word .docx**(rhwp 읽기 전용 HTML → 우리 OOXML 쓰기 + fflate, 표 병합·그림·머리말·꼬리말·각주·미주, 워커 안) · 쪽 그림 PNG(여러 장이면 ZIP, 휴대폰은 공유 시트 30장까지) · 텍스트 .txt(UTF-8 BOM + CRLF, 표는 탭). 암호 문서는 기기 안에서 암호로 열기, DRM·인증서 보안 문서는 열지 않음, 배포용 문서는 복사·인쇄 제한 플래그를 직접 읽어 화면은 PNG 로만·인쇄방지면 저장·인쇄 막기, 배포용은 Word 로 옮기지 않고 복사방지면 텍스트도 막기. 화질·굵은 글꼴 설정만 `localStorage`(`jms.hwp.dpi`·`jms.hwp.bold`)에 기억해요. 검색용 안내 페이지: `/hwp`(`public/hwp.html`, 정적, 도구 코드 없음) | `src/tools-hwp.ts` · `src/hwp-lib.ts`(판별·정책) · `src/hwp-svg.ts` · `src/hwp-export.ts`(블록 모델·텍스트) · `src/hwp-docx.ts`(Word) · `src/hwp-export-ui.ts` · `src/hwp-worker.ts` · `src/hwp-client.ts` |
+| `#hwp-view` | **HWP 보기 · 변환**: HWP 5.0·HWPX·HWP 3.0을 rhwp(WASM, 워커)로 열어 쪽 SVG 를 `<img>`(blob)로 보여 줘요(문서 마크업을 페이지 DOM 에 넣지 않음). 내보내기 4형식: 그림 PDF(150/200/300dpi, 쪽 고르기) · **Word .docx**(rhwp 읽기 전용 HTML → 우리 OOXML 쓰기 + fflate, 표 병합·그림·머리말·꼬리말·각주·미주, 워커 안) · 쪽 그림 PNG(여러 장이면 쪽마다 바로 ZIP 에 이어 붙임, 휴대폰은 공유 시트 30장까지) · 텍스트 .txt(UTF-8 BOM + CRLF, 표는 탭). Word·텍스트는 한컴 전용 영역 글자(PUA: 한컴 기호·옛한글)를 화면과 같은 rhwp 표로 보통 글자로 바꾸고, 못 바꾼 개수는 안내해요. 한 번에 만드는 쪽 수는 화질별(150·200·300dpi: 100·60·40쪽, 아이폰·아이패드 40·25·15쪽), 만드는 중에는 `취소`(PDF·쪽 그림은 다음 쪽부터 멈춤, Word·텍스트는 워커를 버리고 원본으로 다시 열기). 암호로 연 문서는 결과 아래 "저장한 파일에는 암호가 없어요" 안내. 암호 문서는 기기 안에서 암호로 열기, DRM·인증서 보안 문서는 열지 않음, 배포용 문서는 복사·인쇄 제한 플래그를 직접 읽어 화면은 PNG 로만·인쇄방지면 저장·인쇄 막기, 배포용은 Word 로 옮기지 않고 복사방지면 텍스트도 막기. 화질·굵은 글꼴 설정만 `localStorage`(`jms.hwp.dpi`·`jms.hwp.bold`)에 기억해요. 검색용 안내 페이지: `/hwp`(`public/hwp.html`, 정적, 도구 코드 없음) | `src/tools-hwp.ts` · `src/hwp-lib.ts`(판별·정책·예상 크기·쪽 수 한도) · `src/hwp-svg.ts` · `src/hwp-export.ts`(블록 모델·텍스트) · `src/hwp-docx.ts`(Word) · `src/hwp-pua.ts`·`src/hwp-pua-oldhangul.ts`(PUA 표, 워커가 내보낼 때만 불러요) · `src/hwp-export-ui.ts` · `src/hwp-worker.ts` · `src/hwp-client.ts` |
 | `#pdf-merge` · `#pdf-split` · `#pdf-organize` | 합치기 / 나누기·쪽 빼기 / 회전·순서 | `src/tools-pdf.ts` → `src/pdf-worker.ts` |
 | `#pdf-compress` | 용량 줄이기: **사진만 줄이기**(글자·링크 그대로, 안의 JPEG·Flate 사진을 긴 변·화질 기준으로 다시 저장 + 압축 안 된 스트림 Flate) / **쪽을 통째로 이미지로**(PDF.js 로 dpi 맞춰 그려서 JPEG 쪽 PDF) | `src/pdf-shrink.ts`(워커에서 실행, 노드 테스트) |
 | `#id-mask` | 서류 사본 가리기(끌어서 검은 네모, 그림 위에 칠해 저장 → 밑 글자 안 남음) + "OO 제출용 · 날짜 · 다른 용도 사용 금지" 대각선 반복 워터마크. 사진 → JPG·A4 PDF, PDF(10쪽까지) → 이미지 PDF | `src/tools-mask.ts` |
@@ -43,6 +43,8 @@ https://jipmunseo.pages.dev (Cloudflare Pages · 예전 `*.vercel.app` 주소는
 - Word(.docx)는 `docx` 패키지 없이 `src/hwp-docx.ts` 가 OOXML 부품을 직접 쓰고 이미 있는 fflate 로 묶어요(작성자·회사·만든 시각 없음, zip 시각 1980-01-01 고정). 이유: HWP_SPEC 12-4-5(무게·CSP·묶인 패키지 수).
 - 서비스 코드는 rhwp 의 편집·다시 저장·배포용 풀기(`convertToEditable`·`exportHwp*`·`exportHwpx*`)를 부르지 않아요(`src/rhwp.d.ts` 에도 없어요). 배포용 문서를 끄는 스위치: `src/hwp-lib.ts` 의 `HWP_ALLOW_DISTRIBUTION`.
 - 시험 파일 `test/fixtures/hwp/` 는 `node dev/make-hwp-fixtures.mjs` 로 rhwp 가 직접 만든 합성 문서예요(머리말·꼬리말·각주·미주가 든 `synthetic-notes.*` 포함).
+- 한컴 전용 영역 글자(PUA) 표: `src/hwp-pua.ts` 는 rhwp v0.8.7 렌더러의 표(`hancom_pua.rs`·`paragraph_layout.rs` `map_pua_bullet_char`·`composer.rs`·`tags.rs`)를 그대로 옮겼고(MIT, 옮길 때 원본 Rust 파일과 자동으로 비교해 같음을 확인), 옛한글 표 `src/hwp-pua-oldhangul.ts` 는 `node dev/make-hwp-pua.mjs` 가 rhwp v0.8.7 `pua_oldhangul.rs`(원본 KTUG HanyangPuaTableProject, 퍼블릭 도메인)를 해시를 확인해 받아 만들어요. rhwp 버전을 올리면 표도 같이 다시 봐요.
+- 없는 주소는 `public/404.html` 로 404 를 돌려줘요. 이 파일이 없으면 Pages 가 첫 화면을 200 으로 대신 주는데, `/vendor/*` 는 1년 immutable 캐시라 배포 틈에 받은 HTML 이 1년 남을 수 있어서예요. 글꼴·WASM 은 형식(content-type)을 확인하고, 아니면 한 번 캐시를 건너뛰고(`cache: "reload"`) 다시 받아요. 배포 뒤 `npm run check:deploy`(`dev/check-deploy.sh`)가 vendor·js 형식과 404 를 확인해요.
 - 한컴 공개 문서 이용 조건에 따른 고지:
   - 본 제품은 한컴의 HWP 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
   - 본 제품은 한글과컴퓨터의 한글 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
@@ -68,7 +70,8 @@ npm test               # 단위 테스트 (Vitest) — 순수 함수 + PDF 용�
 npm run typecheck      # tsc (화면 + 워커)
 npm run build          # dist/
 node dev/serve.mjs     # dist/ 를 public/_headers 와 같은 헤더(CSP)로 로컬 확인
-npm run deploy         # 빌드 후 Cloudflare Pages(jipmunseo) 배포
+npm run deploy         # 빌드 후 Cloudflare Pages(jipmunseo) 배포 + 배포 확인(dev/check-deploy.sh)
+npm run check:deploy   # 실제 주소의 vendor·js 형식과 없는 주소 404 확인
 ```
 
 문의: cowhddnjsdl0@gmail.com · Jone Lab: https://jone-lab.pages.dev

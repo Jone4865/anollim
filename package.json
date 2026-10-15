@@ -8,7 +8,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.worker.json",
-    "deploy": "vite build && npx --yes wrangler@4 pages deploy dist --project-name jipmunseo --branch main"
+    "deploy": "vite build && npx --yes wrangler@4 pages deploy dist --project-name jipmunseo --branch main && bash dev/check-deploy.sh",
+    "check:deploy": "bash dev/check-deploy.sh"
   },
   "devDependencies": {
     "@types/node": "22.20.5",

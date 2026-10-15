@@ -36,7 +36,7 @@ export type Block = Para | Img | Table;
 export interface HeaderFooter { kind: "header" | "footer"; applyTo: 0 | 1 | 2; paras: Para[] }
 export interface DocModel { blocks: Block[]; hf: HeaderFooter[] }
 /** 옮기지 못했거나 바꿔 옮긴 것 개수. 화면 안내(12-11)에 써요 */
-export type WarnKind = "headerFooter" | "note" | "ole" | "cellObject" | "image" | "equation" | "shape" | "failed";
+export type WarnKind = "headerFooter" | "note" | "ole" | "cellObject" | "image" | "equation" | "shape" | "failed" | "pua";
 export type Warn = Partial<Record<WarnKind, number>>;
 const bump = (w: Warn, k: WarnKind, n = 1) => { w[k] = (w[k] ?? 0) + n; };
 /** rhwp 주석 "셀 안 X 컨트롤은 … 미지원 - 경고: 내용 생략됨" 중 글이 이미 들어 있는 것(필드·단 정의 등)은 세지 않아요 */
@@ -109,12 +109,14 @@ export function dataUri(src: string): { mime: string; data: Uint8Array } | null 
   return mime ? { mime, data } : null;
 }
 
+/** 모으기 설정. fixText 는 문서 글마다 거쳐요(워커가 한컴 전용 영역 글자(PUA)를 보통 글자로 바꾸는 hwp-pua.ts 의 puaFixer 를 넣어요) */
+export interface CollectOpt { images?: boolean; fixText?: (s: string) => string }
 /**
  * rhwp exportSelectionHtml / exportControlHtml 결과(<p>·<span>·<table>·<tr>·<td>·<img>·<br>·<a>)를 블록으로 바꿔요.
  * 우리가 아는 태그만 뜻을 읽고 나머지는 글만 남겨요. 링크 주소는 버려요. 주석에 "미지원·생략"이 있으면 warn.cellObject 를 세요.
  * HTML 은 화면 DOM 에 넣지 않아요(워커 안에서 정규식으로 읽기만 해요).
  */
-export function parseRhwpHtml(html: string, warn: Warn = {}, opt: { images?: boolean } = {}): Block[] {
+export function parseRhwpHtml(html: string, warn: Warn = {}, opt: CollectOpt = {}): Block[] {
   const root: Block[] = [];
   const containers: Block[][] = [root];
   const tables: { table: Table; row: Cell[] | null }[] = [];
@@ -126,7 +128,9 @@ export function parseRhwpHtml(html: string, warn: Warn = {}, opt: { images?: boo
   const cur = () => containers[containers.length - 1];
   const flush = () => { if (para) { cur().push(para); para = null; } };
   const ensure = () => (para ??= { t: "p", runs: [], ...pStyle });
+  const fix = opt.fixText;
   const addText = (text: string) => {
+    if (fix && text !== "\n") text = fix(text);
     if (!text) return;
     const p = ensure(); const st = styles[styles.length - 1];
     const last = p.runs[p.runs.length - 1];
@@ -314,7 +318,7 @@ export function colWidthsFromBboxes(json: string): number[] | undefined {
 const ALIGN: Record<string, Para["align"]> = { justify: "both", distribute: "both", center: "center", right: "right", left: "left" };
 
 /** 머리말·꼬리말: 같은 자리(종류·쪽)는 앞 구역 것 하나만 옮기고, 글이 다른 나머지는 세요. 글이 없는 것(쪽 번호 자리 등)은 건너뛰어요. */
-function collectHeaderFooters(doc: RhwpReadDoc, warn: Warn, keep: boolean, ctrls: Ctrl[]): HeaderFooter[] {
+function collectHeaderFooters(doc: RhwpReadDoc, warn: Warn, keep: boolean, ctrls: Ctrl[], fix: (s: string) => string): HeaderFooter[] {
   let items: { sectionIdx: number; isHeader: boolean; applyTo: number }[];
   try { items = (JSON.parse(doc.getHeaderFooterList(0, true, 0)) as { items?: typeof items }).items ?? []; }
   catch { bump(warn, "headerFooter", ctrls.filter((c) => c.ctrlId === "head" || c.ctrlId === "foot").length); return []; }
@@ -328,7 +332,7 @@ function collectHeaderFooters(doc: RhwpReadDoc, warn: Warn, keep: boolean, ctrls
       const info = JSON.parse(doc.getHeaderFooter(it.sectionIdx, it.isHeader, it.applyTo)) as { exists?: boolean; paraCount?: number };
       if (!info.exists) continue;
       for (let k = 0; k < Math.min(200, info.paraCount ?? 0); k++) {
-        const text = clean(String((JSON.parse(doc.getHeaderFooterParaInfo(it.sectionIdx, it.isHeader, it.applyTo, k)) as { text?: string }).text ?? ""));
+        const text = fix(clean(String((JSON.parse(doc.getHeaderFooterParaInfo(it.sectionIdx, it.isHeader, it.applyTo, k)) as { text?: string }).text ?? "")));
         const p = plain(text);
         try { const al = ALIGN[String((JSON.parse(doc.getParaPropertiesInHf(it.sectionIdx, it.isHeader, it.applyTo, k)) as { alignment?: string }).alignment)]; if (al && al !== "left") p.align = al; } catch { /* 왼쪽 */ }
         // 글자 모양은 문단 첫 글자 것으로(글꼴·크기·굵게·기울임·밑줄). 색은 옮기지 않아요 — 어두운 상자 위 흰 글자가 Word 에선 안 보여서요(규격 문서 실측)
@@ -358,8 +362,9 @@ function collectHeaderFooters(doc: RhwpReadDoc, warn: Warn, keep: boolean, ctrls
  * 본문을 문단 순서대로: 문단 글(HTML, 각주·미주 자리 포함) → 그 문단의 표·그림·수식·글상자. 문단 하나가 실패해도 계속해요.
  * headerFooter: true 면 머리말·꼬리말을 모아요(Word). false 면 세기만 해요(텍스트).
  */
-export function collectDocument(doc: RhwpReadDoc, warn: Warn = {}, opt: { images?: boolean; headerFooter?: boolean; onProgress?: (done: number, total: number) => void } = {}): DocModel {
+export function collectDocument(doc: RhwpReadDoc, warn: Warn = {}, opt: CollectOpt & { headerFooter?: boolean; onProgress?: (done: number, total: number) => void } = {}): DocModel {
   const out: Block[] = [];
+  const fix = opt.fixText ?? ((s: string) => s);
   const secs = doc.getSectionCount();
   const counts = Array.from({ length: secs }, (_, s) => doc.getParagraphCount(s));
   const total = counts.reduce((a, b) => a + b, 0);
@@ -371,7 +376,7 @@ export function collectDocument(doc: RhwpReadDoc, warn: Warn = {}, opt: { images
     if (c.ctrlId === "fn" || c.ctrlId === "en") { const a = notesBy.get(c.para) ?? []; a.push(c); notesBy.set(c.para, a); continue; }
     if (c.ctrlId === "tbl" || c.ctrlId === "gso" || c.ctrlId === "eqed") { const a = byPara.get(c.para) ?? []; a.push(c); byPara.set(c.para, a); }
   }
-  const hf = collectHeaderFooters(doc, warn, opt.headerFooter === true, all);
+  const hf = collectHeaderFooters(doc, warn, opt.headerFooter === true, all, fix);
   /** 문단 안 개체의 글 위치(논리 위치). 못 읽으면 null */
   const positions = (s: number, p: number): number[] | null => { try { const a = JSON.parse(doc.getControlTextPositions(s, p)); return Array.isArray(a) ? a as number[] : null; } catch { return null; } };
   const htmlRuns = (s: number, p: number, a: number, b: number, extra: Block[]): { runs: Run[]; style?: Omit<Para, "t" | "runs"> } => {
@@ -408,14 +413,14 @@ export function collectDocument(doc: RhwpReadDoc, warn: Warn = {}, opt: { images
             seg(off);
             try {
               const info = JSON.parse(doc.getFootnoteInfo(s, p, c.controlIndex)) as { number?: number; texts?: string[] };
-              const paras = (info.texts ?? []).map((t) => clean(String(t)).trim()).filter((t, i, a) => t || (i > 0 && i < a.length - 1));
+              const paras = (info.texts ?? []).map((t) => fix(clean(String(t))).trim()).filter((t, i, a) => t || (i > 0 && i < a.length - 1));
               para.runs.push({ text: "", note: { kind: c.ctrlId === "en" ? "en" : "fn", n: Number(info.number) || 0, paras } });
             } catch { bump(warn, "note"); }
           }
           seg(len);
           text = [para, ...extra];
         } else if (len > 0) { const b = parseRhwpHtml(doc.exportSelectionHtml(s, p, 0, p, len), warn, opt); if (b.length) text = b; }
-      } catch { bump(warn, "failed"); text = [plain(safeText(doc, s, p, len))]; } // HTML 이 안 되면 글만이라도
+      } catch { bump(warn, "failed"); text = [plain(fix(clean(safeText(doc, s, p, len))))]; } // HTML 이 안 되면 글만이라도
       const objs: Block[] = [];
       for (const c of ctrls) {
         try {
@@ -434,7 +439,7 @@ export function collectDocument(doc: RhwpReadDoc, warn: Warn = {}, opt: { images
             // 글상자(사각형·타원 등 안의 글): 글만 옮겨요. 선·곡선처럼 글이 없으면 그냥 넘어가요.
             const n = doc.getCellParagraphCount(s, p, c.controlIndex, 0); let any = false;
             for (let k = 0; k < n; k++) {
-              const t = doc.getTextInCell(s, p, c.controlIndex, 0, k, 0, doc.getCellParagraphLength(s, p, c.controlIndex, 0, k)).trim();
+              const t = fix(clean(doc.getTextInCell(s, p, c.controlIndex, 0, k, 0, doc.getCellParagraphLength(s, p, c.controlIndex, 0, k)))).trim();
               if (t) { objs.push(plain(t)); any = true; }
             }
             if (any) bump(warn, "shape");
@@ -450,7 +455,7 @@ export function collectDocument(doc: RhwpReadDoc, warn: Warn = {}, opt: { images
   return { blocks: out, hf };
 }
 /** 본문 블록만(머리말·꼬리말은 세기만) */
-export function collectBlocks(doc: RhwpReadDoc, warn: Warn = {}, opt: { images?: boolean; onProgress?: (done: number, total: number) => void } = {}): Block[] {
+export function collectBlocks(doc: RhwpReadDoc, warn: Warn = {}, opt: CollectOpt & { onProgress?: (done: number, total: number) => void } = {}): Block[] {
   return collectDocument(doc, warn, { ...opt, headerFooter: false }).blocks;
 }
 
@@ -464,6 +469,7 @@ const WARN_TEXT: [WarnKind, (n: number) => string][] = [
   ["failed", (n) => `${n}곳은 글만 옮겼거나 옮기지 못했어요.`],
   ["equation", (n) => `수식 ${n}개는 수식 글(예: a over b)로 옮겼어요.`],
   ["shape", (n) => `글상자 ${n}개는 글만 옮겼어요.`],
+  ["pua", (n) => `한컴 전용 기호 ${n}개는 바꿀 글자를 몰라 그대로 두었어요. 한컴 글꼴이 없는 곳에서는 네모(□)로 보일 수 있어요.`],
 ];
 export function warnLines(w: Warn): string[] {
   return WARN_TEXT.filter(([k]) => (w[k] ?? 0) > 0).map(([k, f]) => f(w[k] as number));
