@@ -11,7 +11,8 @@ TMP=$(mktemp -d)
 DST=public/vendor/rhwp-$VER; mkdir -p "$DST/fonts"
 cp "$TMP/package/rhwp.js" "$TMP/package/rhwp_bg.wasm" "$TMP/package/LICENSE" "$DST/"
 curl -fsSL "https://raw.githubusercontent.com/edwardkim/rhwp/v$VER/THIRD_PARTY_LICENSES.md" -o "$DST/THIRD_PARTY_LICENSES.md"
-for f in NotoSerifKR-Regular.woff2 NotoSansKR-Regular.woff2; do
+# Bold 두 개는 '제목 굵기 원본처럼'을 켰을 때만 화면이 받아요(HWP_SPEC 0장 결정 3번)
+for f in NotoSerifKR-Regular.woff2 NotoSansKR-Regular.woff2 NotoSerifKR-Bold.woff2 NotoSansKR-Bold.woff2; do
   curl -fsSL "https://raw.githubusercontent.com/edwardkim/rhwp/v$VER/assets/fonts/$f" -o "$DST/fonts/$f"
 done
 curl -fsSL "https://raw.githubusercontent.com/google/fonts/$GF/ofl/notoserifkr/OFL.txt" -o "$DST/fonts/OFL-NotoSerifKR.txt"
@@ -21,6 +22,8 @@ shasum -a 256 -c <<SUMS
 54cf95014312e605c51b98eb9021247ea79ef2bbd0a7080e11c011d0246e3989  $DST/rhwp_bg.wasm
 c9a1e3ac69994d680883b53b1fd83d520733b704792522a932bfaa276117de45  $DST/fonts/NotoSerifKR-Regular.woff2
 d1bf8649914a4fe9477a8735bf056383e44e466141fb3d61897252e06d900c1a  $DST/fonts/NotoSansKR-Regular.woff2
+504d6af6abb882acd912d47bafa383c4512a6c8c33635e4e8fb37111d9310941  $DST/fonts/NotoSerifKR-Bold.woff2
+dab3d492daa687386292cff1499225db580f931f800ee0d124eb0636378c6020  $DST/fonts/NotoSansKR-Bold.woff2
 5e0da210fb04058a8c0087985d2d456b931c2579811a49655721d3cf0c36b6d6  $DST/fonts/OFL-NotoSerifKR.txt
 1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9  $DST/fonts/OFL-NotoSansKR.txt
 SUMS

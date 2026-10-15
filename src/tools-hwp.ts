@@ -1,18 +1,20 @@
 // 본 제품은 한컴의 HWP 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
-// 10. HWP 보기 · 변환 — 한글 문서(HWP·HWPX·HWP 3.0)를 이 기기 안에서 열어 보고, PDF·쪽 그림(PNG)으로 저장해요.
+// 10. HWP 보기 · 변환 — 한글 문서(HWP·HWPX·HWP 3.0)를 이 기기 안에서 열어 보고, PDF·Word·쪽 그림(PNG)·텍스트로 저장해요.
 //  - 형식·배포용·DRM 판별은 앞(메인)에서 순수 함수로(hwp-lib.ts). 형식이 아니면 보기 도구(약 5MB)를 받지 않아요.
 //  - 쪽은 워커(rhwp)가 그린 SVG 를 손본 뒤 <img>(blob)로 띄워요. 문서에서 나온 마크업을 페이지 DOM 에 넣지 않아요.
 //  - 복사·인쇄를 막아 둔 배포용 문서는 SVG 안에 글자가 그대로 있어서 화면도 캔버스로 그린 PNG 로만 보여 줘요.
 //  - 인쇄를 막아 둔 문서는 PDF·쪽 그림 저장을 막고, 브라우저 인쇄(Ctrl/Cmd+P)에도 쪽 대신 안내만 나가요.
+//  - Word·텍스트는 워커 안에서 rhwp 읽기 전용 API 로 만들어요. 배포용 문서는 Word 로, 복사 제한 문서는 텍스트로도 옮기지 않아요(12-2).
+//  - 화질(150·200·300dpi)과 굵은 글꼴 켜기는 이 브라우저에 기억해요(localStorage, 설정 두 개뿐 — 문서·파일 정보는 남기지 않아요).
 //  - 편집 가능하게 바꾸기(convertToEditable)·HWP 로 다시 저장은 부르지 않아요(타입에도 없어요).
 // 설계: _workspace/review/HWP_SPEC.md (4·5·6·7·12장)
 import { h, icon, dropzone, progress, alertBox, resultItem, seg, toast, runPdf, canvasToBlob, LIMITS, MAX_PIXELS, IS_IOS, type Seg } from "./ui.js";
 import { formatSize, parseRanges, rangesToSet } from "./lib.js";
-import { sniffHwp, distributionFlags, hwpPolicy, hwpErrorCode, pdfEstimateKB, type HwpSniff, type HwpPolicy } from "./hwp-lib.js";
-import { prepareSvg, pxToPt, FONT_BASE, FAMILY, type FontFace } from "./hwp-svg.js";
-import { exportRules, exportName, EXPORT_FORMATS, type ExportFormat, type ExportRule } from "./hwp-export.js";
+import { sniffHwp, distributionFlags, hwpPolicy, hwpErrorCode, pdfEstimateKB, type HwpSniff, type HwpPolicy, type HwpDpi } from "./hwp-lib.js";
+import { prepareSvg, pxToPt, FONT_BASE, FAMILY, type FontFace, type Fonts } from "./hwp-svg.js";
+import { exportRules, exportName, warnLines, EXPORT_FORMATS, type ExportFormat, type ExportRule, type Warn } from "./hwp-export.js";
 import { pngResult, shareFilesFor, shareFiles, pngEstimateKB, SHARE_MAX, type PagePng } from "./hwp-export-ui.js";
-import { HwpClient, HwpClientError, type OpenResult } from "./hwp-client.js";
+import { HwpClient, HwpClientError, type OpenResult, type ExportProgress } from "./hwp-client.js";
 import type { Mounted } from "./app.js";
 
 /* ───── 고정 문구 · 한도 ───── */
@@ -21,8 +23,15 @@ const MOBILE_WARN_BYTES = 30 * 1024 * 1024;
 /** PDF·쪽 그림을 한 번에 만드는 최대 쪽 수 (아이폰·아이패드는 메모리가 작아요) */
 const MAX_EXPORT = IS_IOS ? 40 : 100;
 const JPEG_Q = 0.85;
-/** 이번 단계에서 화면에 내는 형식. Word·텍스트는 다음 단계에서 켜요(HWP_SPEC 12장) — 그때까지 카드를 숨겨요 */
-const READY: Record<ExportFormat, boolean> = { pdf: true, png: true, docx: false, txt: false };
+const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+/** 메모리가 적은 기기(Chrome 계열만 알려 줘요). 300dpi 를 고르면 안내를 띄워요 */
+const LOW_MEMORY = ((navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8) <= 2;
+
+/* ───── 기억하는 설정 두 개(화질·굵은 글꼴). 저장이 막힌 브라우저면 기본값으로 ───── */
+const PREF = { dpi: "jms.hwp.dpi", bold: "jms.hwp.bold" } as const;
+function readPref(k: string): string | null { try { return localStorage.getItem(k); } catch { return null; } }
+function writePref(k: string, v: string): void { try { localStorage.setItem(k, v); } catch { /* 기억 못 해도 괜찮아요 */ } }
+const savedDpi = (): HwpDpi => { const n = Number(readPref(PREF.dpi)); return n === 200 || n === 300 ? n : 150; };
 
 const MSG = {
   notHwp: "HWP·HWPX 파일이 아니에요. 확장자만 바뀐 다른 파일일 수 있어요.",
@@ -40,6 +49,13 @@ const MSG = {
   opening: "문서를 여는 중…",
   pwWrong: "암호가 맞지 않아요. 다시 넣어 주세요.",
   reading: "읽기용 보기예요. 한컴오피스와 글꼴·줄 간격·쪽 나눔이 조금 다를 수 있고, 고쳐 쓸 수는 없어요.",
+  reopening: "문서를 다시 여는 중…",
+  docxTooBig: "문서가 커서 Word로 옮기지 못했어요. 텍스트나 PDF로 저장해 보세요.",
+  txtTooBig: "문서가 커서 텍스트로 옮기지 못했어요. PDF로 저장해 보세요.",
+  exportCrashed: "옮기는 중에 보기 도구가 멈췄어요. 다른 형식으로 저장해 보세요.",
+  bigDocxMobile: "큰 문서라 휴대폰에서는 오래 걸리거나 멈출 수 있어요.",
+  lowMemory300: "이 기기는 메모리가 적어서 300dpi는 느리거나 멈출 수 있어요. 보통(150dpi)을 권해요.",
+  boldFail: "굵은 글꼴을 받지 못했어요. 인터넷 연결을 확인하고 다시 켜 주세요.",
   hwp3: "아주 예전 한글(3.0) 문서예요. 모양이 더 많이 다를 수 있어요.",
   reason: {
     print: "만든 사람이 인쇄를 막아 둔 배포용 문서예요. 집문서에서는 보기만 할 수 있어요.",
@@ -65,9 +81,10 @@ const FORMAT_CARD: Record<ExportFormat, { title: string; tag: string; shape: boo
   txt: { title: "텍스트 (.txt)", tag: "글 위주", shape: false, desc: "글자만 뽑아요. 표는 칸을 탭으로 나누고, 그림·서식은 빠져요." },
 };
 
-/* ───── 글꼴(Noto Serif KR·Noto Sans KR Regular, OFL) — 처음 한 번 받아 메모리에만 둬요 ───── */
-let fontsP: Promise<{ serif?: FontFace; sans?: FontFace }> | null = null;
-async function fetchFace(file: string, family: string): Promise<FontFace> {
+/* ───── 글꼴(Noto Serif KR·Noto Sans KR, OFL) — 처음 한 번 받아 메모리에만 둬요. 굵은 것(Bold)은 켰을 때만 ───── */
+let fontsP: Promise<Fonts> | null = null;
+let boldP: Promise<Fonts> | null = null;
+async function fetchFace(file: string, family: string, weight: 400 | 700 = 400): Promise<FontFace> {
   const r = await fetch(FONT_BASE + file);
   if (!r.ok) throw new Error("font " + r.status);
   const blob = await r.blob();
@@ -77,14 +94,21 @@ async function fetchFace(file: string, family: string): Promise<FontFace> {
     fr.onerror = () => rej(fr.error);
     fr.readAsDataURL(blob);
   });
-  return { family, mime: "font/woff2", base64: url.slice(url.indexOf(",") + 1) };
+  return { family, mime: "font/woff2", base64: url.slice(url.indexOf(",") + 1), weight };
 }
 /** 글꼴을 못 받으면 기기 글꼴로 그려요(빈 객체) — 다음에 다시 받아 봐요 */
-function loadFonts(): Promise<{ serif?: FontFace; sans?: FontFace }> {
+function loadFonts(): Promise<Fonts> {
   fontsP ||= Promise.all([fetchFace("NotoSerifKR-Regular.woff2", FAMILY.serif), fetchFace("NotoSansKR-Regular.woff2", FAMILY.sans)])
     .then(([serif, sans]) => ({ serif, sans }))
     .catch(() => { fontsP = null; return {}; });
   return fontsP;
+}
+/** 굵은 글꼴 두 개(명조 1.0MB + 고딕 0.56MB). 못 받으면 오류 — 부르는 쪽이 끄고 알려요 */
+function loadBold(): Promise<Fonts> {
+  boldP ||= Promise.all([fetchFace("NotoSerifKR-Bold.woff2", FAMILY.serif, 700), fetchFace("NotoSansKR-Bold.woff2", FAMILY.sans, 700)])
+    .then(([serifBold, sansBold]) => ({ serifBold, sansBold }))
+    .catch((e) => { boldP = null; throw e; });
+  return boldP;
 }
 let toolReady = false; // 이 페이지에서 보기 도구를 한 번이라도 띄웠는지(진행 문구용)
 
@@ -115,7 +139,7 @@ const svgBlobUrl = (svg: string) => URL.createObjectURL(new Blob([svg], { type: 
 class Cancelled extends Error {}
 
 /* ───── 화면 ───── */
-interface Doc { name: string; size: number; sniff: HwpSniff; policy: HwpPolicy; rules: Record<ExportFormat, ExportRule>; info: OpenResult }
+interface Doc { name: string; size: number; sniff: HwpSniff; policy: HwpPolicy; rules: Record<ExportFormat, ExportRule>; info: OpenResult; password: boolean }
 interface Entry { url: string; charts: number }
 
 export function mountHwp(root: HTMLElement): Mounted {
@@ -127,6 +151,13 @@ export function mountHwp(root: HTMLElement): Mounted {
   let cur = 0;
   let zoom: "fit" | "big" = "fit";
   let busy = false;
+  let bold = readPref(PREF.bold) === "1";
+  /** 지금 쓸 글꼴: 굵은 글꼴을 켰고 받았으면 같이 */
+  async function fonts(): Promise<Fonts> {
+    const base = await loadFonts();
+    if (!bold) return base;
+    try { return { ...base, ...(await loadBold()) }; } catch { return base; }
+  }
 
   const tool = h("div", { class: "hwp-tool" });
   const err = alertBox();
@@ -166,6 +197,22 @@ export function mountHwp(root: HTMLElement): Mounted {
   const placeholder = h("div", { class: "hwp-ph" }, "그리는 중…");
   const stage = h("div", { class: "hwp-stage" }, placeholder);
   const chartNote = h("p", { class: "hint", hidden: true });
+  /* 굵은 글꼴: 켤 때만 받아요(첫 화면 무게 그대로) */
+  const boldIn = h("input", { type: "checkbox" });
+  boldIn.checked = bold;
+  const boldState = h("span", { class: "hwp-bold-state", "aria-live": "polite" });
+  const boldRow = h("label", { class: "check-row hwp-bold" }, boldIn, h("span", {}, "제목 굵기 원본처럼 ", h("small", {}, "(글꼴 1.6MB 더 받기)")), boldState);
+  boldIn.addEventListener("change", () => void setBold(boldIn.checked));
+  async function setBold(on: boolean): Promise<void> {
+    bold = on; writePref(PREF.bold, on ? "1" : "0");
+    if (on) {
+      boldState.textContent = "받는 중…"; boldIn.disabled = true;
+      try { await loadBold(); }
+      catch { bold = false; boldIn.checked = false; writePref(PREF.bold, "0"); toast(MSG.boldFail); }
+      finally { boldState.textContent = ""; boldIn.disabled = false; }
+    }
+    if (doc) { clearCache(); void show(); }
+  }
   const printNote = h("p", { class: "hwp-print-note" });
 
   /* 내보내기 */
@@ -173,7 +220,7 @@ export function mountHwp(root: HTMLElement): Mounted {
   const fmtGroup = h("div", { class: "hwp-formats", role: "radiogroup", "aria-label": "저장할 파일 형식" });
   let fmt: ExportFormat = "pdf";
   let range: "all" | "pick" = "all";
-  let dpi: 150 | 200 = 150;
+  let dpi: HwpDpi = savedDpi();
   const rangeIn = h("input", { class: "input", type: "text", placeholder: "예) 1-3, 5", "aria-label": "저장할 쪽", autocomplete: "off", inputmode: "numeric" });
   const rangeSlot = h("span", { class: "hwp-range" });
   let rangeSeg: Seg<"all" | "pick"> | null = null;
@@ -186,13 +233,14 @@ export function mountHwp(root: HTMLElement): Mounted {
   }
   rangeIn.hidden = true;
   rangeIn.addEventListener("input", () => updateOpts());
-  const dpiSeg = seg<150 | 200>([{ value: 150, label: "보통 150dpi" }, { value: 200, label: "선명하게 200dpi" }], dpi, (v) => { dpi = v; updateOpts(); });
+  const dpiSeg = seg<HwpDpi>([{ value: 150, label: "보통 150dpi" }, { value: 200, label: "선명하게 200dpi" }, { value: 300, label: "인쇄용 300dpi" }], dpi, (v) => { dpi = v; writePref(PREF.dpi, String(v)); updateOpts(); });
   const optHint = h("p", { class: "hint" });
   const makeBtn = h("button", { type: "button", class: "btn primary", onclick: () => void runExport() });
+  const picOpts = h("div", { class: "opts" },
+    h("div", { class: "opt" }, h("span", { class: "lbl" }, "저장할 쪽"), rangeSlot, rangeIn),
+    h("div", { class: "opt" }, h("span", { class: "lbl" }, "화질"), dpiSeg));
   const optsBox = h("div", { class: "hwp-opts" },
-    h("div", { class: "opts" },
-      h("div", { class: "opt" }, h("span", { class: "lbl" }, "저장할 쪽"), rangeSlot, rangeIn),
-      h("div", { class: "opt" }, h("span", { class: "lbl" }, "화질"), dpiSeg)),
+    picOpts,
     optHint,
     h("div", { class: "actions" }, makeBtn));
   const exportBox = h("div", { class: "hwp-export", hidden: true },
@@ -204,7 +252,7 @@ export function mountHwp(root: HTMLElement): Mounted {
     h("div", { class: "panel-head" }, fileLine, h("button", { type: "button", class: "btn ghost sm", onclick: () => reset(true) }, "다른 파일")),
     notices,
     h("div", { class: "hwp-bar" }, pager, zoomSeg),
-    stage, chartNote, printNote,
+    stage, chartNote, printNote, boldRow,
     exportArea);
 
   const legal = h("div", { class: "hwp-legal" },
@@ -266,7 +314,7 @@ export function mountHwp(root: HTMLElement): Mounted {
     err.hide();
     try {
       prog.set(null, toolReady ? MSG.opening : MSG.firstLoad);
-      await Promise.all([client.init(), loadFonts()]);
+      await Promise.all([client.init(), loadFonts(), bold ? loadBold().catch(() => null) : null]);
       if (g !== gen) return;
       toolReady = true;
       prog.set(null, MSG.opening);
@@ -274,7 +322,7 @@ export function mountHwp(root: HTMLElement): Mounted {
       if (g !== gen) return;
       if (!info.pages) throw new HwpClientError("error", "");
       pending = null;
-      doc = { name: p.name, size: p.size, sniff: p.sniff, policy: p.policy, rules: exportRules(p.policy, p.sniff), info };
+      doc = { name: p.name, size: p.size, sniff: p.sniff, policy: p.policy, rules: exportRules(p.policy, p.sniff), info, password: !!password };
       showViewer();
     } catch (e) {
       if (g !== gen) return;
@@ -315,10 +363,8 @@ export function mountHwp(root: HTMLElement): Mounted {
     pager.hidden = d.info.pages < 2;
     stage.classList.toggle("big", zoom === "big");
     // 내보내기: 막힌 형식만 남으면 버튼을 숨겨요
-    const shown = EXPORT_FORMATS.filter((f) => READY[f]);
-    const anyOk = shown.some((f) => d.rules[f].ok);
-    exportArea.hidden = !anyOk;
-    fmt = pickInitialFormat(d, shown);
+    exportArea.hidden = !EXPORT_FORMATS.some((f) => d.rules[f].ok);
+    fmt = pickInitialFormat(d);
     buildRangeSeg(d.info.pages);
     renderFormats();
     cur = 0;
@@ -369,8 +415,7 @@ export function mountHwp(root: HTMLElement): Mounted {
   }
   async function buildPage(i: number): Promise<Entry> {
     const raw = await client.svg(i);
-    const fonts = await loadFonts();
-    const { svg, charts } = prepareSvg(raw, fonts);
+    const { svg, charts } = prepareSvg(raw, await fonts());
     const svgUrl = svgBlobUrl(svg);
     if (!raster()) return { url: svgUrl, charts };
     // 복사·인쇄 제한 문서: SVG(글자 포함)는 캔버스에 그린 직후 버리고 PNG 만 화면에 둬요
@@ -450,9 +495,9 @@ export function mountHwp(root: HTMLElement): Mounted {
   document.addEventListener("keydown", onKey);
 
   /* ───── 내보내기: 형식 고르기 ───── */
-  /** 허용된 것 중 첫 번째(보통 PDF). 바닥글의 "저장하는 데이터 없음" 약속대로 고른 형식을 기억하지 않아요 */
-  function pickInitialFormat(d: Doc, shown: ExportFormat[]): ExportFormat {
-    return shown.find((f) => d.rules[f].ok) ?? "pdf";
+  /** 허용된 것 중 첫 번째(보통 PDF). 형식은 기억하지 않아요(설계 '선택' 항목 — 기억하는 건 화질·굵은 글꼴 두 개만) */
+  function pickInitialFormat(d: Doc): ExportFormat {
+    return EXPORT_FORMATS.find((f) => d.rules[f].ok) ?? "pdf";
   }
   function toggleExport(open?: boolean): void {
     const on = open ?? exportBox.hidden;
@@ -463,7 +508,7 @@ export function mountHwp(root: HTMLElement): Mounted {
   function renderFormats(): void {
     if (!doc) return;
     const d = doc;
-    const cards = EXPORT_FORMATS.filter((f) => READY[f]).map((f) => {
+    const cards = EXPORT_FORMATS.map((f) => {
       const c = FORMAT_CARD[f], r = d.rules[f], sel = f === fmt && r.ok;
       return h("button", {
         type: "button", role: "radio", class: `hwp-fmt${r.ok ? "" : " off"}`, "aria-checked": String(sel), "aria-disabled": r.ok ? null : "true",
@@ -478,7 +523,7 @@ export function mountHwp(root: HTMLElement): Mounted {
   fmtGroup.addEventListener("keydown", (e) => {
     if (!doc || !["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(e.key)) return;
     const d = doc;
-    const ok = EXPORT_FORMATS.filter((f) => READY[f] && d.rules[f].ok);
+    const ok = EXPORT_FORMATS.filter((f) => d.rules[f].ok);
     if (ok.length < 2) return;
     e.preventDefault();
     const step = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : -1;
@@ -497,9 +542,20 @@ export function mountHwp(root: HTMLElement): Mounted {
     if (range === "all") return Array.from({ length: n }, (_, i) => i);
     return rangesToSet(parseRanges(rangeIn.value, n));
   }
+  const MAKE: Record<ExportFormat, string> = { pdf: "PDF 만들기", png: "쪽 그림 만들기", docx: "Word 파일 만들기", txt: "텍스트 만들기" };
   function updateOpts(): void {
     if (!doc) return;
-    makeBtn.textContent = fmt === "png" ? "쪽 그림 만들기" : "PDF 만들기";
+    makeBtn.textContent = MAKE[fmt];
+    const pic = fmt === "pdf" || fmt === "png";
+    picOpts.hidden = !pic;
+    if (!pic) {
+      optHint.className = "hint";
+      optHint.textContent = fmt === "docx"
+        ? "글·표·그림과 머리말·꼬리말·각주·미주를 옮겨요. 차트는 빠지고, 글꼴·줄 간격·쪽 나눔은 Word가 다시 정해요." + (IS_MOBILE && doc.size > MOBILE_WARN_BYTES ? " " + MSG.bigDocxMobile : "")
+        : "UTF-8 글자 파일이에요. 메모장·한글·워드 어디서나 열려요. 각주·미주는 끝에 모아 적어요.";
+      makeBtn.disabled = busy;
+      return;
+    }
     let pages: number[];
     try { pages = selectedPages(); }
     catch (e) { optHint.className = "hint bad"; optHint.textContent = (e as Error).message; makeBtn.disabled = true; return; }
@@ -512,9 +568,10 @@ export function mountHwp(root: HTMLElement): Mounted {
       return;
     }
     const mb = (kb: number) => (kb / 1024 < 0.1 ? "0.1" : (kb / 1024).toFixed(1));
-    optHint.textContent = fmt === "png"
+    optHint.textContent = (fmt === "png"
       ? `쪽마다 PNG 한 장 · 예상 크기 약 ${mb(pngEstimateKB(pages.length, dpi))}MB`
-      : `쪽을 그림으로 담은 PDF예요. 인쇄·제출에는 충분하지만 글자 검색·복사는 안 돼요. 예상 크기 약 ${mb(pdfEstimateKB(pages.length, dpi))}MB`;
+      : `쪽을 그림으로 담은 PDF예요. 인쇄·제출에는 충분하지만 글자 검색·복사는 안 돼요. 예상 크기 약 ${mb(pdfEstimateKB(pages.length, dpi))}MB`)
+      + (dpi === 300 && LOW_MEMORY ? "\n" + MSG.lowMemory300 : "");
   }
 
   /* ───── 내보내기: 만들기 ───── */
@@ -523,7 +580,7 @@ export function mountHwp(root: HTMLElement): Mounted {
   async function renderAt(i: number, type: "image/png" | "image/jpeg"): Promise<Raster> {
     const s = (doc as Doc).info.sizes[i];
     const raw = await client.svg(i);
-    const { svg } = prepareSvg(raw, await loadFonts());
+    const { svg } = prepareSvg(raw, await fonts());
     const url = svgBlobUrl(svg);
     try { return await rasterize(url, Math.round((s.w * dpi) / 96), Math.round((s.h * dpi) / 96), type, type === "image/jpeg" ? JPEG_Q : undefined); }
     finally { URL.revokeObjectURL(url); }
@@ -531,14 +588,41 @@ export function mountHwp(root: HTMLElement): Mounted {
   async function runExport(): Promise<void> {
     if (!doc || busy) return;
     const d = doc, f = fmt, g = gen;
-    if (!READY[f] || !d.rules[f].ok) return; // 막힌 형식은 여기까지 오지 않지만 한 번 더
-    let pages: number[];
-    try { pages = selectedPages(); } catch (e) { optHint.className = "hint bad"; optHint.textContent = (e as Error).message; return; }
-    if (!pages.length || pages.length > MAX_EXPORT) return;
+    if (!d.rules[f].ok) return; // 막힌 형식은 여기까지 오지 않지만 한 번 더
+    const pic = f === "pdf" || f === "png";
+    let pages: number[] = [];
+    if (pic) {
+      try { pages = selectedPages(); } catch (e) { optHint.className = "hint bad"; optHint.textContent = (e as Error).message; return; }
+      if (!pages.length || pages.length > MAX_EXPORT) return;
+    }
     busy = true; makeBtn.disabled = true; err.hide(); out.replaceChildren(); lastPngs = [];
+    let after: (() => Promise<void>) | null = null; // 끝난 뒤 이어서 할 일(다시 열기)
     try {
       const total = pages.length;
-      if (f === "pdf") {
+      if (f === "docx" || f === "txt") {
+        prog.set(0, "문서 글을 옮기는 중… 0%");
+        const onP = (p: ExportProgress) => {
+          if (g !== gen) return;
+          if (p.phase === "pack") { prog.set(0.9, "Word 파일로 묶는 중…"); return; }
+          const r = p.total ? Math.min(1, p.done / p.total) : 0;
+          prog.set(r * 0.88, `문서 글을 옮기는 중… ${Math.round(r * 100)}%`);
+        };
+        if (f === "docx") {
+          const r = await client.docx(onP);
+          if (g !== gen) return;
+          prog.set(1, "완료!");
+          out.replaceChildren(resultBox("Word 파일을 만들었어요",
+            resultItem({ name: exportName(d.name, "docx"), blob: new Blob([r.bytes], { type: DOCX_MIME }), extra: "글·표 위주" }),
+            diffNote(r.warn, "줄 간격·쪽 나눔은 Word가 다시 정해요.")));
+        } else {
+          const r = await client.txt(onP);
+          if (g !== gen) return;
+          prog.set(1, "완료!");
+          out.replaceChildren(resultBox("텍스트를 만들었어요",
+            resultItem({ name: exportName(d.name, "txt"), blob: new Blob([r.text], { type: "text/plain;charset=utf-8" }), extra: "글자만 · UTF-8" }),
+            diffNote(r.warn, null)));
+        }
+      } else if (f === "pdf") {
         const parts: { bytes: Uint8Array<ArrayBuffer>; wPt: number; hPt: number }[] = [];
         for (let k = 0; k < total; k++) {
           prog.set(k / total * 0.9, `${k + 1}/${total}쪽 그리는 중…`);
@@ -585,15 +669,54 @@ export function mountHwp(root: HTMLElement): Mounted {
       }
     } catch (e) {
       if (g !== gen) return;
+      if (!pic && e instanceof HwpClientError && (e.code === "timeout" || e.code === "fatal")) {
+        // 워커를 버렸으니 원본 바이트로 다시 열어요(12-10). 보기는 그대로 이어져요
+        const msg = e.code === "fatal" ? MSG.exportCrashed : f === "docx" ? MSG.docxTooBig : MSG.txtTooBig;
+        after = () => reopen(msg);
+        return;
+      }
       if (e instanceof HwpClientError && (e.code === "fatal" || e.code === "timeout" || e.code === "worker" || e.code === "load")) { failTo(MSG.crashed); return; }
-      err.show(e instanceof HwpClientError ? "쪽을 그리지 못했어요. 다시 해 주세요." : (e as Error)?.message || "저장하지 못했어요. 다시 해 주세요.");
+      err.show(e instanceof HwpClientError ? (pic ? "쪽을 그리지 못했어요. 다시 해 주세요." : "문서를 옮기지 못했어요. 다른 형식으로 저장해 보세요.") : (e as Error)?.message || "저장하지 못했어요. 다시 해 주세요.");
     } finally {
-      if (g === gen) { busy = false; setTimeout(() => prog.hide(), 800); updateOpts(); }
+      if (g === gen) {
+        busy = false;
+        if (after) { prog.hide(); void after(); }
+        else { setTimeout(() => { if (!busy) prog.hide(); }, 800); updateOpts(); }
+      }
     }
   }
-  function resultBox(title: string, item: HTMLElement): HTMLElement {
-    return h("div", { class: "result", id: "result" }, h("h2", {}, icon("ok"), title), item,
+  function resultBox(title: string, item: HTMLElement, note?: HTMLElement | null): HTMLElement {
+    return h("div", { class: "result", id: "result" }, h("h2", {}, icon("ok"), title), item, note ?? null,
       h("button", { type: "button", class: "btn ghost sm hwp-again", onclick: () => { out.replaceChildren(); lastPngs = []; prog.hide(); toggleExport(true); exportBox.scrollIntoView({ block: "nearest" }); } }, "다른 형식으로 저장"));
+  }
+  /** Word·텍스트: 원본과 다른 점(12-4-4 문구). 늘 붙는 줄(tail)이 있으면 끝에 */
+  function diffNote(w: Warn, tail: string | null): HTMLElement | null {
+    const lines = [...warnLines(w), ...(tail ? [tail] : [])];
+    if (!lines.length) return null;
+    return h("div", { class: "alert info hwp-diff" }, h("b", {}, "원본과 다른 점"), h("ul", {}, ...lines.map((l) => h("li", {}, l))));
+  }
+  /** Word·텍스트가 시간 한도를 넘겨 워커를 버린 뒤: 원본으로 다시 열어 보기를 이어 가요. 암호 문서는 암호를 남기지 않아서 다시 물어요 */
+  async function reopen(msg: string): Promise<void> {
+    const d = doc, b = bytes;
+    if (!d || !b) { failTo(msg); return; }
+    if (d.password) {
+      reset(true);
+      bytes = b; pending = { name: d.name, size: d.size, sniff: d.sniff, policy: d.policy };
+      askPassword(false);
+      err.show(msg + " 문서를 다시 열려면 암호를 한 번 더 넣어 주세요.");
+      return;
+    }
+    const g = gen;
+    busy = true; makeBtn.disabled = true;
+    try {
+      prog.set(null, MSG.reopening);
+      const info = await client.open(b.slice().buffer);
+      if (g !== gen) return;
+      d.info = info;
+      err.show(msg);
+      void show(); // 줄 서 있다 취소된 쪽이 있었으면 다시 그려요
+    } catch { if (g === gen) failTo(msg); }
+    finally { if (g === gen) { prog.hide(); busy = false; updateOpts(); } }
   }
 
   /* ───── 정리 ───── */

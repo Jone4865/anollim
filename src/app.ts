@@ -4,15 +4,26 @@ import { mountMerge, mountSplit, mountOrganize, mountPdfCompress } from "./tools
 import { mountImgToPdf, mountCompress, mountExif } from "./tools-img.js";
 import { mountBg } from "./tools-bg.js";
 import { mountMask } from "./tools-mask.js";
-import { mountHwp } from "./tools-hwp.js";
 import { art } from "./art.js";
 
 /** 도구 화면이 돌려주는 것 (없으면 {}) */
 export interface Mounted { unmount?: () => void; onPaste?: (files: File[]) => void }
 interface Tool { id: string; title: string; desc: string; mount: (body: HTMLElement) => Mounted | void }
+
+/** 그 도구를 열 때만 코드를 받아요(첫 화면 무게 그대로 — HWP_SPEC 0장 결정 10번). 붙여넣기는 받지 않는 도구용 */
+function lazyMount(load: () => Promise<(body: HTMLElement) => Mounted | void>): (body: HTMLElement) => Mounted {
+  return (body) => {
+    let inner: Mounted | null = null, gone = false;
+    body.append(h("p", { class: "hint", style: "color:var(--mat-muted)" }, "도구를 여는 중…"));
+    load().then((mount) => { if (gone) return; body.replaceChildren(); inner = mount(body) || {}; })
+      .catch(() => { if (!gone) body.replaceChildren(h("div", { class: "alert" }, "도구를 불러오지 못했어요. 인터넷 연결을 확인하고 새로 고침해 주세요.")); });
+    return { unmount: () => { gone = true; inner?.unmount?.(); } };
+  };
+}
+const mountHwp = lazyMount(() => import("./tools-hwp.js").then((m) => m.mountHwp));
 const TOOLS: Tool[] = [
-  // 찾는 사람이 가장 많아서 맨 앞. Word·텍스트 내보내기를 켜면 설명을 "PDF·Word·그림·텍스트로 저장해요."로 바꿔요(HWP_SPEC 6-1)
-  { id: "hwp-view", title: "HWP 보기 · 변환", desc: "한글 문서(HWP·HWPX)를 설치 없이 열어 보고, PDF·쪽 그림으로 저장해요.", mount: mountHwp },
+  // 찾는 사람이 가장 많아서 맨 앞(HWP_SPEC 6-1). 검색용 안내 페이지는 public/hwp.html(/hwp)
+  { id: "hwp-view", title: "HWP 보기 · 변환", desc: "한글 문서(HWP·HWPX)를 설치 없이 열어 보고, PDF·Word·그림·텍스트로 저장해요.", mount: mountHwp },
   { id: "pdf-merge", title: "PDF 합치기", desc: "여러 PDF를 원하는 순서로 하나로 합쳐요.", mount: mountMerge },
   { id: "pdf-split", title: "PDF 나누기 · 페이지 빼기", desc: "필요한 쪽만 골라 새 PDF로, 한 쪽씩 또는 범위로 나눠요.", mount: mountSplit },
   { id: "pdf-organize", title: "PDF 회전 · 순서 바꾸기", desc: "썸네일을 보면서 돌리고, 옮기고, 지운 뒤 저장해요.", mount: mountOrganize },

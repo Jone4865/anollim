@@ -18,4 +18,21 @@ doc.insertPicture(0, 0, 0, "", new Uint8Array(png), 2000, 2000, 1, 1, "png", "�
 fs.writeFileSync(`${out}/synthetic.hwp`, doc.exportHwp());
 fs.writeFileSync(`${out}/synthetic.hwpx`, doc.exportHwpx());
 fs.writeFileSync(`${out}/synthetic-pw1234.hwp`, doc.exportHwpWithPassword("1234"));
+
+// 머리말·꼬리말·각주·미주가 든 문서 (Word 내보내기 시험용, HWP_SPEC 0장 결정 9번)
+const nd = rhwp.HwpDocument.createEmpty();
+nd.createBlankDocument();
+nd.insertText(0, 0, 0, "각주가 붙는 문장이에요. 뒤 글도 있어요.");
+nd.splitParagraph(0, 0, 23);
+nd.insertText(0, 1, 0, "미주가 붙는 둘째 문단");
+nd.createHeaderFooter(0, true, 0);
+nd.insertTextInHeaderFooter(0, true, 0, 0, 0, "집문서 머리말 <시험>");
+nd.createHeaderFooter(0, false, 0);
+nd.insertTextInHeaderFooter(0, false, 0, 0, 0, "집문서 꼬리말");
+const fn = JSON.parse(nd.insertFootnote(0, 0, 12));
+nd.insertTextInFootnote(0, 0, fn.controlIdx, 0, 0, "각주 내용 & <꺾쇠>");
+const en = JSON.parse(nd.insertEndnote(0, 1, 3));
+nd.insertTextInFootnote(0, 1, en.controlIdx, 0, 0, "미주 내용");
+fs.writeFileSync(`${out}/synthetic-notes.hwp`, nd.exportHwp());
+fs.writeFileSync(`${out}/synthetic-notes.hwpx`, nd.exportHwpx());
 for (const f of fs.readdirSync(out)) console.log(f, fs.statSync(`${out}/${f}`).size);

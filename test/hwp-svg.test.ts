@@ -45,3 +45,16 @@ test("prepareSvg: 쓰는 묶음 글꼴만 넣어요", () => {
   assert.ok(!prepareSvg(onlySerif, {}).svg.includes("<style>"));
   assert.equal(pxToPt(800), 600);
 });
+
+test("굵은 글꼴: 굵은 글자를 쓰는 묶음만, 켰을 때(받았을 때)만 넣어요", () => {
+  const serif: FontFace = { family: "JMSerif", mime: "font/woff2", base64: "SERIF" };
+  const sans: FontFace = { family: "JMSans", mime: "font/woff2", base64: "SANS" };
+  const sansBold: FontFace = { family: "JMSans", mime: "font/woff2", base64: "SANSBOLD", weight: 700 };
+  const serifBold: FontFace = { family: "JMSerif", mime: "font/woff2", base64: "SERIFBOLD", weight: 700 };
+  const s = `<svg><text ${SERIF}>가</text><text ${SANS} font-size="20" font-weight="bold">제목</text></svg>`;
+  assert.deepEqual(usedGroups(s), { serif: true, sans: true, sansBold: true });
+  const on = prepareSvg(s, { serif, sans, serifBold, sansBold }).svg;
+  assert.ok(on.includes("@font-face{font-family:'JMSans';font-weight:700;src:url(data:font/woff2;base64,SANSBOLD)"));
+  assert.ok(!on.includes("SERIFBOLD"), "명조는 굵은 글자가 없어서 안 넣어요");
+  assert.ok(!prepareSvg(s, { serif, sans }).svg.includes("font-weight:700"), "끄면 안 넣어요");
+});

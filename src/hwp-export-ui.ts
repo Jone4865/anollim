@@ -2,9 +2,10 @@
 // 화면 쪽 내보내기 도우미(DOM 필요): 쪽 그림 PNG 묶기·공유 시트. PDF 는 tools-hwp.ts 의 rasterize → runPdf("pages") 그대로예요.
 import { makeZip } from "./ui.js";
 import { exportName } from "./hwp-export.js";
+import type { HwpDpi } from "./hwp-lib.js";
 
-/** 실측(HWP_SPEC 12-12): 150dpi 쪽당 평균 200~310KB, 200dpi 는 약 1.4배 → 넉넉히 잡아요 */
-export const pngEstimateKB = (pages: number, dpi: 150 | 200) => pages * (dpi === 150 ? 300 : 420);
+/** 실측(HWP_SPEC 12-12): 150dpi 쪽당 평균 200~310KB, 200dpi 는 약 1.4배. 300dpi 는 헤드리스 Chrome 실측 쪽당 약 980KB(문체부 21334) → 넉넉히 잡아요 */
+export const pngEstimateKB = (pages: number, dpi: HwpDpi) => pages * (dpi === 150 ? 300 : dpi === 200 ? 420 : 1200);
 /** 한 번에 공유 시트로 넘기는 최대 장수. 카톡이 한 번에 받는 장수는 미확인이라 보수적으로 */
 export const SHARE_MAX = 30;
 

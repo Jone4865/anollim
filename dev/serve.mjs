@@ -15,7 +15,7 @@ for (const line of fs.readFileSync(path.join(repo, "public", "_headers"), "utf8"
   if (!/^\s/.test(line)) rules.push({ re: new RegExp("^" + line.trim().replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$"), headers: [] });
   else { const i = line.indexOf(":"); rules.at(-1)?.headers.push([line.slice(0, i).trim(), line.slice(i + 1).trim()]); }
 }
-const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".pdf": "application/pdf", ".jpg": "image/jpeg", ".heic": "image/heic", ".bcmap": "application/octet-stream", ".pfb": "application/octet-stream", ".ttf": "font/ttf", ".webp": "image/webp", ".txt": "text/plain; charset=utf-8", ".wasm": "application/wasm", ".woff2": "font/woff2", ".md": "text/markdown; charset=utf-8" };
+const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".pdf": "application/pdf", ".jpg": "image/jpeg", ".heic": "image/heic", ".bcmap": "application/octet-stream", ".pfb": "application/octet-stream", ".ttf": "font/ttf", ".webp": "image/webp", ".txt": "text/plain; charset=utf-8", ".wasm": "application/wasm", ".woff2": "font/woff2", ".md": "text/markdown; charset=utf-8", ".xml": "application/xml; charset=utf-8", ".zip": "application/zip" };
 http.createServer((req, res) => {
   const u = decodeURIComponent(new URL(req.url, "http://x").pathname);
   for (const r of rules) if (r.re.test(u)) for (const [k, v] of r.headers) res.setHeader(k, v);

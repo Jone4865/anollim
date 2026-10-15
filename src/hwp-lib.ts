@@ -173,5 +173,7 @@ export function hwpErrorCode(msg: string): HwpErr {
   if (msg.includes("UNSUPPORTED_FILE_FORMAT")) return "unsupported";
   return "failed";
 }
-/** 그림 PDF 예상 크기(KB). 실측 쪽당 150dpi 약 230KB · 200dpi 약 340KB (HWP_SPEC 3-5) */
-export const pdfEstimateKB = (pages: number, dpi: 150 | 200) => pages * (dpi === 150 ? 230 : 340);
+/** 화질(dpi): 150 보통 · 200 선명하게 · 300 인쇄용 (0장 결정 2번) */
+export type HwpDpi = 150 | 200 | 300;
+/** 그림 PDF 예상 크기(KB). 실측 쪽당 150dpi 약 230KB · 200dpi 약 340KB (HWP_SPEC 3-5), 300dpi 는 헤드리스 Chrome 실측 약 590KB(문체부 21334)를 넉넉히 */
+export const pdfEstimateKB = (pages: number, dpi: HwpDpi) => pages * (dpi === 150 ? 230 : dpi === 200 ? 340 : 640);

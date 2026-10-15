@@ -41,6 +41,8 @@ test("서비스가 쓰는 API 만 타입에 있어요(편집·다시 저장·배
   const dts = fs.readFileSync("src/rhwp.d.ts", "utf8").replace(/\/\/.*$/gm, "");
   for (const bad of ["convertToEditable", "exportHwp", "exportHwpx", "exportHml", "insertText", "createEmpty"]) assert.ok(!dts.includes(bad), bad);
   // 워커 코드도 그런 API 를 부르지 않아요
-  const worker = fs.readFileSync("src/hwp-worker.ts", "utf8").replace(/\/\/.*$/gm, "");
-  for (const bad of ["convertToEditable", "exportHwp", "exportHml"]) assert.ok(!worker.includes(bad), bad);
+  for (const f of ["src/hwp-worker.ts", "src/hwp-export.ts", "src/hwp-docx.ts"]) {
+    const code = fs.readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, ""); // 설명 주석은 빼고 코드만
+    for (const bad of ["convertToEditable", "exportHwp", "exportHml", "insertText", "createEmpty", "pasteHtml"]) assert.ok(!code.includes(bad), `${f}: ${bad}`);
+  }
 });

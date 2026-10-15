@@ -119,7 +119,8 @@ test("hwpErrorCode: rhwp 0.8.7 실제 오류 문구", () => {
   for (const [m, code] of M) assert.equal(hwpErrorCode(m), code, m);
 });
 
-test("pdfEstimateKB: 쪽당 150dpi 230KB · 200dpi 340KB", () => {
+test("pdfEstimateKB: 쪽당 150dpi 230KB · 200dpi 340KB · 300dpi 640KB", () => {
   assert.equal(pdfEstimateKB(24, 150), 5520);
   assert.equal(pdfEstimateKB(2, 200), 680);
+  assert.equal(pdfEstimateKB(2, 300), 1280);
 });

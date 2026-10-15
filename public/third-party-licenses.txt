@@ -446,10 +446,13 @@ of "한글 문서 파일 형식 5.0 revision 1.3".) 한글, 한컴, HWP and HWPX
 trademarks of Hancom Inc. Jipmunseo is not affiliated with Hancom.
 
 ------------------------------------------------------------------------------
-A8. Noto Serif KR Regular, Noto Sans KR Regular (subsets) - SIL OFL 1.1
+A8. Noto Serif KR Regular/Bold, Noto Sans KR Regular/Bold (subsets) - SIL OFL 1.1
 ------------------------------------------------------------------------------
 Files: /vendor/rhwp-0.8.7/fonts/NotoSerifKR-Regular.woff2
        /vendor/rhwp-0.8.7/fonts/NotoSansKR-Regular.woff2
+       /vendor/rhwp-0.8.7/fonts/NotoSerifKR-Bold.woff2
+       /vendor/rhwp-0.8.7/fonts/NotoSansKR-Bold.woff2
+       (Bold files are downloaded only when the user turns on "제목 굵기 원본처럼")
        (unmodified copies of the subset fonts in rhwp v0.8.7 assets/fonts,
        which are reduced subsets of Google Fonts Noto Serif KR / Noto Sans KR)
 Source: https://github.com/edwardkim/rhwp/tree/v0.8.7/assets/fonts
@@ -460,10 +463,12 @@ License files: /vendor/rhwp-0.8.7/fonts/OFL-NotoSerifKR.txt,
 Used for: drawing pages of HWP documents (embedded into page images in your
 browser only)
 
-Noto Serif KR: (c) 2017-2024 Adobe (http://www.adobe.com/).
+Noto Serif KR (Regular, Bold): (c) 2017-2024 Adobe (http://www.adobe.com/).
                Copyright 2012 Google Inc. All Rights Reserved.
-Noto Sans KR:  Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved
-               Font Name 'Source'
+Noto Sans KR (Regular, Bold):  Copyright 2014-2021 Adobe (http://www.adobe.com/),
+               with Reserved Font Name 'Source'
+(The primary family names inside these subset files do not use the Reserved
+Font Name 'Source': "Noto Serif KR ExtraLight", "Noto Sans KR Thin" etc.)
 
 License text: C7 (SIL Open Font License 1.1)
 
