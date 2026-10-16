@@ -114,7 +114,8 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: 
 footer { border-top: 1px solid var(--line2); padding: 24px 0 44px; color: var(--muted); font-size: 13px; }
 footer p { margin: 4px 0; }
 footer a { color: var(--ink); }
-.other-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; padding: 0; }
+/* <nav> 라서 위의 nav(양 끝 정렬) 규칙을 덮어써요 — 안 그러면 줄마다 칩이 양 끝으로 벌어져요 */
+.other-tools { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 8px; margin: 0 0 18px; padding: 0; }
 .other-tools a { text-decoration: none; font-size: 14px; padding: 8px 14px; border: 1.5px solid var(--line2); border-radius: 999px; background: var(--sheet); color: var(--ink); min-height: 40px; display: inline-flex; align-items: center; }
 .other-tools a:hover { border-color: var(--acc); background: var(--acc-soft); }
 
@@ -156,6 +157,7 @@ footer a { color: var(--ink); }
 .btn.primary:hover:not(:disabled) { background: var(--acc-ink); }
 .btn.big { padding: 12px 24px; font-size: 17px; min-height: 52px; }
 .btn.sm { min-height: 40px; padding: 6px 12px; font-size: 14px; box-shadow: 1.5px 1.5px 0 var(--ink); border-width: 1.5px; }
+.btn.sm:disabled { box-shadow: none; } /* .btn.sm 이 .btn:disabled 뒤에 있어서 꺼진 작은 버튼에도 그림자가 남아 눌리는 것처럼 보였어요 */
 .btn.ghost { box-shadow: none; border-color: var(--line2); background: transparent; }
 .btn.ghost:hover:not(:disabled) { border-color: var(--ink); box-shadow: none; transform: none; }
 .btn svg { width: 17px; height: 17px; }
