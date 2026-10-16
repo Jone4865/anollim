@@ -19,7 +19,7 @@ const blocks: Block[] = [
 test("Word 파일 구조: 부품·순서·관계", () => {
   const z = buildDocx(blocks, A4, ff.zipSync);
   const files = ff.unzipSync(z);
-  assert.deepEqual(Object.keys(files), ["[Content_Types].xml", "_rels/.rels", "word/document.xml", "word/styles.xml", "word/_rels/document.xml.rels", "word/media/image1.png"]);
+  assert.deepEqual(Object.keys(files), ["[Content_Types].xml", "_rels/.rels", "word/document.xml", "word/styles.xml", "word/_rels/document.xml.rels", "word/settings.xml", "word/media/image1.png"]);
   const doc = dec.decode(files["word/document.xml"]);
   const rels = dec.decode(files["word/_rels/document.xml.rels"]);
   assert.match(doc, /^<\?xml version="1.0" encoding="UTF-8" standalone="yes"\?>/);
@@ -85,7 +85,7 @@ test("각주·미주: 본문 자리에 참조, footnotes·endnotes 부품, 구�
   assert.match(fx, /<w:footnote w:id="1"><w:p><w:pPr><w:spacing w:after="0"\/><\/w:pPr><w:r><w:rPr><w:vertAlign w:val="superscript"\/><\/w:rPr><w:footnoteRef\/><\/w:r>.*각주 &lt;글&gt;.*<\/w:p><w:p>.*둘째 문단.*<\/w:p><\/w:footnote>/);
   assert.match(dec.decode(files["word/endnotes.xml"]), /<w:endnote w:id="1">.*<w:endnoteRef\/>.*미주/);
   const st = dec.decode(files["word/settings.xml"]);
-  assert.match(st, /<w:footnotePr><w:footnote w:id="-1"\/><w:footnote w:id="0"\/><\/w:footnotePr><w:endnotePr><w:numFmt w:val="decimal"\/><w:endnote w:id="-1"\/><w:endnote w:id="0"\/><\/w:endnotePr>/);
+  assert.match(st, /<w:footnotePr><w:footnote w:id="-1"\/><w:footnote w:id="0"\/><\/w:footnotePr><w:endnotePr><w:numFmt w:val="decimal"\/><w:endnote w:id="-1"\/><w:endnote w:id="0"\/><\/w:endnotePr><w:compat>/); // CT_Settings 순서
   assert.ok(!st.includes("evenAndOddHeaders"));
   const ct = dec.decode(files["[Content_Types].xml"]), rels = dec.decode(files["word/_rels/document.xml.rels"]);
   for (const part of ["footnotes", "endnotes", "settings"]) {
@@ -98,7 +98,7 @@ test("머리글·바닥글: 양 쪽 → 기본, 홀수·짝수 → 기본·짝�
   const P = (t: string) => [{ t: "p" as const, runs: [{ text: t }], align: "center" as const }];
   const both: HeaderFooter[] = [{ kind: "header", applyTo: 0, paras: P("머리 <말>") }, { kind: "footer", applyTo: 0, paras: P("꼬리") }];
   const files = ff.unzipSync(buildDocx(blocks.slice(0, 1), A4, ff.zipSync, { hf: both }));
-  assert.ok(!("word/settings.xml" in files));
+  assert.ok(!dec.decode(files["word/settings.xml"]).includes("evenAndOddHeaders"));
   const doc = dec.decode(files["word/document.xml"]);
   assert.match(doc, /<w:sectPr><w:headerReference w:type="default" r:id="rIdHdr1"\/><w:footerReference w:type="default" r:id="rIdFtr1"\/><w:pgSz/);
   assert.match(dec.decode(files["word/header1.xml"]), /^<\?xml[^>]*\?>\n<w:hdr [^>]*><w:p><w:pPr><w:jc w:val="center"\/><\/w:pPr><w:r><w:t xml:space="preserve">머리 &lt;말&gt;<\/w:t><\/w:r><\/w:p><\/w:hdr>$/);
@@ -112,4 +112,17 @@ test("머리글·바닥글: 양 쪽 → 기본, 홀수·짝수 → 기본·짝�
   const f2 = ff.unzipSync(buildDocx(blocks.slice(0, 1), A4, ff.zipSync, { hf: [{ kind: "header", applyTo: 1, paras: P("짝") }, { kind: "header", applyTo: 2, paras: P("홀") }] }));
   assert.match(dec.decode(f2["word/settings.xml"]), /<w:evenAndOddHeaders\/>/);
   assert.match(dec.decode(f2["word/document.xml"]), /<w:headerReference w:type="default" r:id="rIdHdr1"\/><w:headerReference w:type="even" r:id="rIdHdr2"\/>/);
+});
+
+test("Word 가 '호환 모드'로 열지 않게 settings 에 compatibilityMode 15 를 늘 넣어요", () => {
+  for (const bs of [[] as Block[], blocks]) {
+    const files = ff.unzipSync(buildDocx(bs, A4, ff.zipSync));
+    assert.equal(dec.decode(files["word/settings.xml"]), '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat></w:settings>');
+    assert.match(dec.decode(files["word/_rels/document.xml.rels"]), /Id="rIdSettings" Type="http:\/\/schemas.openxmlformats.org\/officeDocument\/2006\/relationships\/settings" Target="settings.xml"/);
+    assert.match(dec.decode(files["[Content_Types].xml"]), /<Override PartName="\/word\/settings.xml" ContentType="application\/vnd.openxmlformats-officedocument.wordprocessingml.settings\+xml"\/>/);
+  }
+  // 짝수/홀수 머리글과 같이 있을 때도 순서는 evenAndOddHeaders → compat
+  const P = [{ t: "p" as const, runs: [{ text: "짝" }] }];
+  const st = dec.decode(ff.unzipSync(buildDocx(blocks.slice(0, 1), A4, ff.zipSync, { hf: [{ kind: "header", applyTo: 1, paras: P }] }))["word/settings.xml"]);
+  assert.match(st, /<w:settings [^>]*><w:evenAndOddHeaders\/><w:compat>/);
 });

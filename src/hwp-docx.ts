@@ -1,6 +1,6 @@
 // 본 제품은 한컴의 HWP 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
 // 블록 모델 → Word(.docx). OOXML(ECMA-376) 부품을 직접 써요: [Content_Types].xml · _rels/.rels · word/document.xml
-// · word/styles.xml · word/_rels/document.xml.rels · (있을 때만) word/settings.xml · footnotes.xml · endnotes.xml · header*.xml · footer*.xml · media/*.
+// · word/styles.xml · word/_rels/document.xml.rels · word/settings.xml · (있을 때만) footnotes.xml · endnotes.xml · header*.xml · footer*.xml · media/*.
 // 압축은 집문서에 이미 있는 fflate(zipSync)를 받아 써요. docx 패키지를 쓰지 않은 이유는 HWP_SPEC 12-4-5.
 // 글·표·그림 우선, 서식은 근사(글꼴 이름·크기·굵게·기울임·밑줄·취소선·색·위/아래 첨자·정렬·들여쓰기·칸 병합·칸 테두리·칸 배경).
 // 머리말·꼬리말은 Word 머리글·바닥글로, 각주·미주는 Word 각주·미주로(글만, 0장 결정 9번).
@@ -185,14 +185,15 @@ export function buildDocx(blocks: Block[], page: PageSetup, zipSync: ZipSync, op
   }
   // 미주 번호는 HWP 처럼 1, 2, 3(Word 기본은 i, ii, iii)
   const enPr = endnotes.length ? '<w:endnotePr><w:numFmt w:val="decimal"/></w:endnotePr>' : "";
-  if (hs.evenAndOdd || footnotes.length || endnotes.length) {
-    const s = (hs.evenAndOdd ? "<w:evenAndOddHeaders/>" : "")
-      + (footnotes.length ? '<w:footnotePr><w:footnote w:id="-1"/><w:footnote w:id="0"/></w:footnotePr>' : "")
-      + (endnotes.length ? '<w:endnotePr><w:numFmt w:val="decimal"/><w:endnote w:id="-1"/><w:endnote w:id="0"/></w:endnotePr>' : "");
-    parts["word/settings.xml"] = enc.encode(`${XML}<w:settings ${W_NS}>${s}</w:settings>`);
-    rels.push(`<Relationship Id="rIdSettings" Type="${REL}settings" Target="settings.xml"/>`);
-    overrides.push(`<Override PartName="/word/settings.xml" ContentType="${CT}settings+xml"/>`);
-  }
+  // settings 는 늘 넣어요: compatibilityMode 15 가 없으면 Word 가 Word 2007 문서로 보고 '호환 모드'로 열고,
+  // 그 모드에선 표 테두리가 칸 여백(108twip)만큼 왼쪽 여백 밖으로 나가요. 순서는 CT_Settings(evenAndOddHeaders → footnotePr → endnotePr → compat).
+  const s = (hs.evenAndOdd ? "<w:evenAndOddHeaders/>" : "")
+    + (footnotes.length ? '<w:footnotePr><w:footnote w:id="-1"/><w:footnote w:id="0"/></w:footnotePr>' : "")
+    + (endnotes.length ? '<w:endnotePr><w:numFmt w:val="decimal"/><w:endnote w:id="-1"/><w:endnote w:id="0"/></w:endnotePr>' : "")
+    + '<w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat>';
+  parts["word/settings.xml"] = enc.encode(`${XML}<w:settings ${W_NS}>${s}</w:settings>`);
+  rels.push(`<Relationship Id="rIdSettings" Type="${REL}settings" Target="settings.xml"/>`);
+  overrides.push(`<Override PartName="/word/settings.xml" ContentType="${CT}settings+xml"/>`);
 
   const orient = page.w > page.h ? ' w:orient="landscape"' : "";
   const doc = `${XML}<w:document ${NS}><w:body>${body}<w:sectPr>${refs}${enPr}<w:pgSz w:w="${page.w}" w:h="${page.h}"${orient}/><w:pgMar w:top="${page.top}" w:right="${page.right}" w:bottom="${page.bottom}" w:left="${page.left}" w:header="${page.header}" w:footer="${page.footer}" w:gutter="0"/></w:sectPr></w:body></w:document>`;
