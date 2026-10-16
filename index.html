@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>집문서 — 업로드 없는 파일 도구</title>
-<meta name="description" content="HWP 파일 보기·PDF·Word 변환, PDF 합치기·나누기·회전·용량 줄이기, 신분증 가리기·제출용 워터마크, 이미지 압축·변환, 사진 배경·위치 정보 지우기. 모든 처리는 브라우저 안에서 끝나요. 파일을 서버로 올리지 않아요.">
+<title>집문서 · HWP 보기와 PDF·사진 도구</title>
+<meta name="description" content="HWP 파일을 열어 PDF·Word로 저장하고, PDF를 합치거나 나누고 용량을 줄여요. 신분증 사본 가리기와 제출용 워터마크, 사진 압축과 배경 지우기도 있어요.">
 <meta name="theme-color" content="#f6f1e7">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://jipmunseo.pages.dev/">
 <link rel="canonical" href="https://jipmunseo.pages.dev/">
-<meta property="og:title" content="집문서 — 업로드 없는 파일 도구">
-<meta property="og:description" content="HWP 파일 보기·PDF·Word 변환, PDF 용량 줄이기, 신분증 가리기·워터마크까지 브라우저 안에서. 파일을 서버로 올리지 않아요.">
+<meta property="og:title" content="집문서 · HWP 보기와 PDF·사진 도구">
+<meta property="og:description" content="한글 문서를 PDF·Word로 바꾸고 신분증 사본에 ‘제출용’ 글씨를 넣을 때 쓰는 도구 모음이에요.">
 <meta property="og:image" content="https://jipmunseo.pages.dev/assets/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -25,22 +25,21 @@
 <body>
 <div class="wrap">
   <nav>
-    <a class="brand" href="#"><img src="/assets/icon.svg" alt="" width="38" height="38"><span>집문서<small>업로드 없는 파일 도구</small></span></a>
-    <div class="links"><a href="#tools">도구</a><a href="#trust">정말 안 올라가나요?</a></div>
+    <a class="brand" href="#"><img src="/assets/icon.svg" alt="" width="38" height="38"><span>집문서<small>서류 파일 도구</small></span></a>
+    <div class="links"><a href="#tools">도구</a><a href="/hwp">HWP 파일 보기</a></div>
   </nav>
 
   <main id="home">
     <header class="hero">
       <div class="hero-text">
-        <p class="hero-note"><span>설치 없음</span><span>가입 없음</span><span>업로드 없음</span></p>
-        <h1><span class="marker">업로드 없는</span><br>파일 도구</h1>
-        <p class="lead">PDF 합치기부터 사진 배경 지우기까지, 모든 작업은 지금 보고 있는 이 브라우저 안에서 끝나요. <b>파일은 집에만 — 어디에도 올리지 않아요.</b></p>
+        <h1><span class="marker">서류 파일</span><br>손보는 도구</h1>
+        <p class="lead">한글 문서를 PDF나 Word로 바꾸거나, 신분증 사본에 ‘OO 제출용’ 글씨를 넣을 때 써요. PDF와 사진을 다루는 도구도 같이 있어요.</p>
       </div>
       <div class="hero-desk" aria-hidden="true">
         <div class="mat mat-mini">
           <div class="sheet hero-sheet s1"><span class="sheet-name">계약서.pdf</span><i></i><i></i><i></i><i class="short"></i></div>
           <div class="sheet hero-sheet s2"><span class="sheet-name">여권사진.jpg</span><span class="photo-ph"></span></div>
-          <div class="hero-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><span><b>0 B</b>서버로 보낸 파일</span></div>
+          <div class="hero-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><path d="M10 14l2 2 4-4.5"/></svg><span><b>제출용-사본.pdf</b>두 파일을 하나로 묶었어요</span></div>
         </div>
       </div>
     </header>
@@ -52,40 +51,14 @@
         <div class="tools" id="tool-grid"></div>
       </div>
     </section>
-
-    <section id="trust" class="trust">
-      <div class="note">
-        <h2>정말 <span class="marker">안 올라가나요?</span></h2>
-        <p>집문서에는 파일을 받는 서버가 아예 없고, 이 사이트의 코드는 넣은 파일을 어디로도 보내지 않아요. 페이지에 <b>보안 정책(CSP)</b>을 걸어서 실행되는 스크립트는 이 사이트에서 받은 것만 허용하고, 브라우저가 데이터를 보낼 수 있는 곳도 이 사이트와 배경 지우기 모델을 받는 곳으로 좁혀 두었어요.</p>
-        <p>밖에서 받는 건 글꼴(Pretendard, jsDelivr)과, 배경 지우기를 쓸 때만 받는 AI 모델·실행 파일(IMG.LY)뿐이에요. 한글 문서 보기 도구와 글꼴은 이 사이트에서 받아요. 그래도 아래 방법으로 직접 확인해 보시는 게 가장 확실해요.</p>
-        <ol class="steps">
-          <li>PC에서 <kbd>F12</kbd>(맥은 <kbd>⌥⌘I</kbd>)로 개발자 도구를 열어요.</li>
-          <li><b>네트워크</b> 탭을 연 채로 아무 도구에 파일을 넣어 보세요.</li>
-          <li>파일 크기만 한 요청이 하나도 안 생기는 걸 직접 확인할 수 있어요.</li>
-        </ol>
-        <p class="memo">배경 지우기만 처음 한 번 AI 모델(약 56MB)을 받아와요. 받아오기만 하고, 사진은 안 보내요.</p>
-      </div>
-      <div class="slip" aria-label="걸어둔 보안 정책 요약">
-        <p class="slip-h">걸어 둔 보안 정책</p>
-        <dl>
-          <div><dt>데이터 보낼 수 있는 곳</dt><dd>이 사이트 + 모델 받는 곳</dd></div>
-          <div><dt>밖에서 받는 스크립트</dt><dd>배경 지우기 모델만</dd></div>
-          <div><dt>밖에서 받는 글꼴</dt><dd>Pretendard (무결성 검사)</dd></div>
-          <div><dt>파일 받는 서버</dt><dd class="big">0개</dd></div>
-          <div><dt>폼 전송</dt><dd>막음</dd></div>
-          <div><dt>방문 분석 · 광고</dt><dd>없음</dd></div>
-        </dl>
-      </div>
-    </section>
   </main>
 
   <main id="tool-view" hidden></main>
 
   <footer>
     <nav class="other-tools" id="other-tools" aria-label="다른 도구" hidden></nav>
-    <p>개인정보: 로그인 없음. 파일은 브라우저 메모리에서만 다루고, 이 사이트는 파일을 어디에도 저장·전송하지 않아요. 저장하는 데이터도 없어요(HWP 보기에서 고른 화질·굵은 글꼴 설정 두 가지만 이 브라우저에 기억해요). 글꼴은 jsDelivr 에서, 배경 지우기 모델은 IMG.LY(staticimgly.com)에서 받아요 — 받을 때 그 서버에 접속 정보(IP 등)가 남을 수 있어요. 한글(HWP·HWPX) 문서도 같은 방식으로 이 브라우저 안에서만 열고, PDF·Word·쪽 그림·텍스트도 이 기기 안에서 만들어요. 문서 암호는 그 자리에서 여는 데만 쓰고, 집문서는 암호를 저장하거나 보내지 않아요.</p>
     <p>쓴 오픈소스: <a href="https://github.com/edwardkim/rhwp" target="_blank" rel="noopener">rhwp</a>(MIT, 한글 문서 보기) · Noto Serif KR · Noto Sans KR · pdf-lib · PDF.js · fflate · exifr · heic-to · <a href="https://github.com/imgly/background-removal-js" target="_blank" rel="noopener">@imgly/background-removal</a>(AGPL-3.0, CSP에 맞게 일부 수정) · ONNX Runtime Web · Pretendard · <a href="/licenses">라이선스 고지</a></p>
-    <p>문의: <a href="mailto:cowhddnjsdl0@gmail.com">cowhddnjsdl0@gmail.com</a> · <a href="https://toon.at/donate/ggyaaaaak" target="_blank" rel="noopener">☕ 응원하기</a> · <a href="/hwp">HWP 파일 보기 안내</a></p>
+    <p><a href="/privacy">개인정보 처리방침</a> · 문의 <a href="mailto:cowhddnjsdl0@gmail.com">cowhddnjsdl0@gmail.com</a> · <a class="donate" href="https://toon.at/donate/ggyaaaaak" target="_blank" rel="noopener"><svg class="ic-cup" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 3.2c-.9 1 .9 1.8 0 2.8M12.6 3.2c-.9 1 .9 1.8 0 2.8"/><path d="M4.5 9h11v4.5a4.5 4.5 0 0 1-4.5 4.5h-2a4.5 4.5 0 0 1-4.5-4.5z"/><path d="M15.5 10.5h1.3a2.3 2.3 0 0 1 0 4.6h-1.5"/><path d="M3.5 21h14"/></svg>응원하기</a> · <a href="/hwp">HWP 파일 보기 안내</a></p>
     <p>본 제품은 한컴의 HWP 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다. 한글·한컴·HWP·HWPX는 ㈜한컴(옛 ㈜한글과컴퓨터)의 상표예요. 집문서는 한컴과 제휴·후원·승인 관계가 없는 독립 도구예요.</p>
     <p>집문서는 <a href="https://github.com/Jone4865/jipmunseo" target="_blank" rel="noopener">소스 코드가 공개</a>된 AGPL-3.0 프로젝트예요.</p>
     <p>© 2026 집문서 · <a href="https://jone-lab.pages.dev">Jone Lab의 다른 프로젝트 보기</a></p>

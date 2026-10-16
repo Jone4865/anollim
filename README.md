@@ -1,4 +1,4 @@
-# 집문서 — 업로드 없는 파일 도구
+# 집문서 · 서류 파일 도구
 
 https://jipmunseo.pages.dev (Cloudflare Pages · 예전 `*.vercel.app` 주소는 정리돼서 열리지 않아요)
 
@@ -41,6 +41,8 @@ https://jipmunseo.pages.dev (Cloudflare Pages · 예전 `*.vercel.app` 주소는
 - [rhwp](https://github.com/edwardkim/rhwp) `@rhwp/core` 0.8.7 (MIT) — `public/vendor/rhwp-0.8.7/` 에 고치지 않은 npm 배포본(`rhwp.js`·`rhwp_bg.wasm`)과 `LICENSE`·`THIRD_PARTY_LICENSES.md`(안의 Rust 크레이트 목록)를 둬요. 받기·해시 확인: `bash dev/update-rhwp.sh`.
 - 글꼴 Noto Serif KR·Noto Sans KR Regular·Bold (SIL OFL 1.1, rhwp v0.8.7 `assets/fonts` 의 서브셋) — `public/vendor/rhwp-0.8.7/fonts/`(버전 폴더 안: `/vendor/*` 는 1년 immutable 캐시라서). 쪽 SVG 안에 data URI 로 넣어 기기마다 같은 모양으로 그려요. Bold 두 개(1.6MB)는 화면에서 '제목 굵기 원본처럼'을 켰을 때만 받아요.
 - Word(.docx)는 `docx` 패키지 없이 `src/hwp-docx.ts` 가 OOXML 부품을 직접 쓰고 이미 있는 fflate 로 묶어요(작성자·회사·만든 시각 없음, zip 시각 1980-01-01 고정). 이유: HWP_SPEC 12-4-5(무게·CSP·묶인 패키지 수).
+- Word 서식(2026-10-16): 줄 간격은 rhwp HTML 의 `line-height` 를 옮겨요(`160%` → `<w:spacing w:line="384" w:lineRule="auto"/>`, 고정 값 pt·px → `exact`). 구역마다 쪽 크기·방향·여백(`getPageDef(구역)`)을 따로 두고, 앞 구역의 `sectPr` 는 그 구역 끝 문단에 걸어요(새 구역은 새 쪽). 한 줄이 63칸을 넘는 표가 있으면 Word 가 파일을 못 열어서 Word 를 만들지 않고 화면에서 안내해요(`widestTable`·`WORD_MAX_COLS`).
+- 아이콘은 `src/icons.ts` 한 곳에 모아요(시스템 컬러 이모지 대신 직접 그린 SVG). 정적 HTML 에 붙인 커피잔이 같은지, 화면 코드에 컬러 이모지가 없는지는 `test/icons.test.ts` 가 봐요. 글 속 화살표(→)는 `arrowed()` 로 아이콘 + 숨긴 글자. 개인정보 설명은 `/privacy`(`public/privacy.html`) 한 곳에만 둬요.
 - 서비스 코드는 rhwp 의 편집·다시 저장·배포용 풀기(`convertToEditable`·`exportHwp*`·`exportHwpx*`)를 부르지 않아요(`src/rhwp.d.ts` 에도 없어요). 배포용 문서를 끄는 스위치: `src/hwp-lib.ts` 의 `HWP_ALLOW_DISTRIBUTION`.
 - 시험 파일 `test/fixtures/hwp/` 는 `node dev/make-hwp-fixtures.mjs` 로 rhwp 가 직접 만든 합성 문서예요(머리말·꼬리말·각주·미주가 든 `synthetic-notes.*` 포함).
 - 한컴 전용 영역 글자(PUA) 표: `src/hwp-pua.ts` 는 rhwp v0.8.7 렌더러의 표(`hancom_pua.rs`·`paragraph_layout.rs` `map_pua_bullet_char`·`composer.rs`·`tags.rs`)를 그대로 옮겼고(MIT, 옮길 때 원본 Rust 파일과 자동으로 비교해 같음을 확인), 옛한글 표 `src/hwp-pua-oldhangul.ts` 는 `node dev/make-hwp-pua.mjs` 가 rhwp v0.8.7 `pua_oldhangul.rs`(원본 KTUG HanyangPuaTableProject, 퍼블릭 도메인)를 해시를 확인해 받아 만들어요. rhwp 버전을 올리면 표도 같이 다시 봐요.

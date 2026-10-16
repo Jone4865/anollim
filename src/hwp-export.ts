@@ -25,7 +25,8 @@ export function exportRules(p: HwpPolicy, s: Pick<HwpSniff, "distribution">): Re
 export interface Note { kind: "fn" | "en"; n: number; paras: string[] }
 /** note 가 있으면 글 대신 각주·미주 참조 자리예요(text 는 빈 글) */
 export interface Run { text: string; b?: true; i?: true; u?: true; s?: true; sup?: true; sub?: true; pt?: number; color?: string; font?: string; note?: Note }
-export interface Para { t: "p"; runs: Run[]; align?: "left" | "center" | "right" | "both"; indentPt?: number; leftPt?: number }
+/** linePct: 줄 간격 % (rhwp line-height:160% → 160, Word 에선 240 × 1.6 = 384 auto), linePt: 고정 줄 간격(pt, Word exact) */
+export interface Para { t: "p"; runs: Run[]; align?: "left" | "center" | "right" | "both"; indentPt?: number; leftPt?: number; linePct?: number; linePt?: number }
 export interface Img { t: "img"; mime: string; data: Uint8Array; wPx: number; hPx: number }
 export type Side = "top" | "left" | "bottom" | "right";
 export interface Border { sz: number; color: string } // sz = 1/8pt
@@ -34,7 +35,8 @@ export interface Table { t: "table"; rows: Cell[][]; colPx?: number[] }
 export type Block = Para | Img | Table;
 /** 머리말·꼬리말 하나. applyTo: 0 양 쪽 · 1 짝수 쪽 · 2 홀수 쪽 (rhwp 0.8.7 실측) */
 export interface HeaderFooter { kind: "header" | "footer"; applyTo: 0 | 1 | 2; paras: Para[] }
-export interface DocModel { blocks: Block[]; hf: HeaderFooter[] }
+/** sections: 구역마다 그 구역이 시작하는 blocks 자리(구역 수만큼, 첫 값은 0) */
+export interface DocModel { blocks: Block[]; hf: HeaderFooter[]; sections: number[] }
 /** 옮기지 못했거나 바꿔 옮긴 것 개수. 화면 안내(12-11)에 써요 */
 export type WarnKind = "headerFooter" | "note" | "ole" | "cellObject" | "image" | "equation" | "shape" | "failed" | "pua";
 export type Warn = Partial<Record<WarnKind, number>>;
@@ -79,6 +81,15 @@ function runStyle(base: Omit<Run, "text">, st: Record<string, string>, tag: stri
   const va = st["vertical-align"]; if (va === "super" || tag === "sup") r.sup = true; if (va === "sub" || tag === "sub") r.sub = true;
   const c = hex6(st["color"]); if (c) r.color = c;
   return r;
+}
+/** rhwp 줄 간격: "160%"(글자에 따라) → linePct, "1.6" → 160, "16.0pt"·"21.3px"(고정 값) → linePt. "normal"·이상한 값은 버려요 */
+export function lineHeight(v: string | undefined): Pick<Para, "linePct" | "linePt"> {
+  const m = /^([\d.]+)\s*(%|pt|px)?$/.exec((v ?? "").trim()); if (!m) return {};
+  const n = parseFloat(m[1]); if (!(n > 0)) return {};
+  if (m[2] === "%") return n >= 10 && n <= 1000 ? { linePct: Math.round(n) } : {};
+  if (!m[2]) return n >= 0.1 && n <= 10 ? { linePct: Math.round(n * 100) } : {};
+  const pt = m[2] === "px" ? n * 0.75 : n;
+  return pt >= 1 && pt <= 1584 ? { linePt: Math.round(pt * 2) / 2 } : {};
 }
 function borderOf(v: string | undefined): Border | null | undefined {
   if (v == null) return undefined;
@@ -155,6 +166,7 @@ export function parseRhwpHtml(html: string, warn: Warn = {}, opt: CollectOpt = {
         const ta = st["text-align"]; if (ta === "center" || ta === "right" || ta === "left") pStyle.align = ta; else if (ta === "justify") pStyle.align = "both";
         const ind = toPt(st["text-indent"]); if (ind) pStyle.indentPt = ind;
         const ml = toPt(st["margin-left"]); if (ml && ml > 0) pStyle.leftPt = ml;
+        Object.assign(pStyle, lineHeight(st["line-height"]));
         ensure();
       } else pStyle = {};
       continue;
@@ -246,6 +258,16 @@ export function tableGrid(t: Table): { cols: number; rows: Slot[][] } {
 }
 function tableLines(t: Table): string[] {
   return tableGrid(t).rows.map((r) => r.flatMap((s) => [s.cell && s.merge !== "continue" ? cellText(s.cell) : "", ...Array(s.span - 1).fill("")]).join("\t").replace(/\t+$/, ""));
+}
+/** Word 표는 한 줄에 63칸까지만 열려요(그보다 넓으면 Word 가 파일을 못 열어요). 표 칸 안 표까지 봐서 가장 넓은 표의 칸 수 */
+export const WORD_MAX_COLS = 63;
+export function widestTable(blocks: Block[]): number {
+  let w = 0;
+  const walk = (bs: Block[]) => {
+    for (const b of bs) if (b.t === "table") { w = Math.max(w, tableGrid(b).cols); for (const row of b.rows) for (const c of row) walk(c.blocks); }
+  };
+  walk(blocks);
+  return w;
 }
 /** 본문(표 칸 안까지)에 나온 순서대로 각주·미주 */
 export function notesIn(blocks: Block[]): Note[] {
@@ -389,7 +411,9 @@ export function collectDocument(doc: RhwpReadDoc, warn: Warn = {}, opt: CollectO
     return { runs, style };
   };
   let g = 0;
+  const sections: number[] = [];
   for (let s = 0; s < secs; s++) {
+    sections.push(out.length);
     for (let p = 0; p < counts[s]; p++, g++) {
       const ctrls = (byPara.get(g) ?? []).sort((a, b) => a.pos - b.pos);
       const noteCtrls = notesBy.get(g) ?? [];
@@ -452,7 +476,7 @@ export function collectDocument(doc: RhwpReadDoc, warn: Warn = {}, opt: CollectO
       if (opt.onProgress && (g & 31) === 0) opt.onProgress(g, total);
     }
   }
-  return { blocks: out, hf };
+  return { blocks: out, hf, sections };
 }
 /** 본문 블록만(머리말·꼬리말은 세기만) */
 export function collectBlocks(doc: RhwpReadDoc, warn: Warn = {}, opt: CollectOpt & { onProgress?: (done: number, total: number) => void } = {}): Block[] {

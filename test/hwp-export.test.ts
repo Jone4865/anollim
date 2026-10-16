@@ -1,7 +1,7 @@
 // 내보내기 공용: 형식별 허용(5-2 정책) · rhwp HTML 읽기 · 표 격자 · 텍스트 · 파일 이름 (HWP_SPEC 12-14 + 각주·미주)
 import { test } from "vitest";
 import assert from "node:assert/strict";
-import { parseRhwpHtml, tableGrid, blocksToText, exportRules, exportName, warnLines, sniffImage, dataUri, notesIn, type Table, type Para, type Warn, type Note } from "../src/hwp-export.js";
+import { parseRhwpHtml, lineHeight, tableGrid, blocksToText, exportRules, exportName, warnLines, sniffImage, dataUri, notesIn, type Table, type Para, type Warn, type Note } from "../src/hwp-export.js";
 import { hwpPolicy, type HwpSniff } from "../src/hwp-lib.js";
 
 const PNG1 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -13,6 +13,7 @@ test("문단·글자 모양·엔티티", () => {
   const p = b[0] as Para;
   assert.equal(p.align, "center");
   assert.ok(Math.abs((p.indentPt ?? 0) + 23.175) < 0.01);
+  assert.equal(p.linePct, 160); // line-height:160% → Word 줄 간격
   assert.deepEqual(p.runs[0], { text: "보 도", font: "HY헤드라인M", pt: 30, b: true, color: "4C4C4C" });
   assert.deepEqual(p.runs[1], { text: '<a> & "b"\tc', font: "바탕", pt: 10, i: true, u: true, color: "000000" });
 });
@@ -116,4 +117,12 @@ test("텍스트: 각주·미주는 자리에 [각주 1] 표시, 끝에 내용(�
   const p = parseRhwpHtml("<p><span>a</span></p>")[0] as Para;
   p.runs.push({ text: "", note: fn });
   assert.equal(p.runs.length, 2);
+});
+
+test("줄 간격 값 읽기: %·배수·고정(pt·px), 이상한 값은 버려요", () => {
+  assert.deepEqual(lineHeight("160%"), { linePct: 160 });
+  assert.deepEqual(lineHeight("1.5"), { linePct: 150 });
+  assert.deepEqual(lineHeight("16.0pt"), { linePt: 16 });
+  assert.deepEqual(lineHeight("20px"), { linePt: 15 });
+  for (const v of ["normal", "", undefined, "0%", "5000%", "-1pt", "calc(1em)"]) assert.deepEqual(lineHeight(v), {}, String(v));
 });

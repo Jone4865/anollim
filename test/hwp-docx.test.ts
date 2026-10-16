@@ -1,7 +1,8 @@
 // 블록 → Word(.docx): 부품·관계·서식·표·그림·머리글·각주 (HWP_SPEC 12-14 + 0장 결정 9번)
 import { test } from "vitest";
 import assert from "node:assert/strict";
-import { buildDocx, normalizeImages, pageSetupFromHwp, wordHeaderSlots, xmlText, A4, type ZipSync } from "../src/hwp-docx.js";
+import { buildDocx, normalizeImages, pageSetupFromHwp, wordHeaderSlots, xmlText, A4, DocxTooWideError, type PageSetup, type ZipSync } from "../src/hwp-docx.js";
+import { widestTable, WORD_MAX_COLS } from "../src/hwp-export.js";
 import type { Block, HeaderFooter, Note } from "../src/hwp-export.js";
 // 집문서 public/vendor 의 fflate 를 그대로 써요(서비스와 같은 파일)
 const ff: { zipSync: ZipSync; unzipSync(d: Uint8Array): Record<string, Uint8Array> } = await import(/* @vite-ignore */ new URL("../public/vendor/fflate-0.8.2.mjs", import.meta.url).href);
@@ -125,4 +126,52 @@ test("Word 가 '호환 모드'로 열지 않게 settings 에 compatibilityMode 1
   const P = [{ t: "p" as const, runs: [{ text: "짝" }] }];
   const st = dec.decode(ff.unzipSync(buildDocx(blocks.slice(0, 1), A4, ff.zipSync, { hf: [{ kind: "header", applyTo: 1, paras: P }] }))["word/settings.xml"]);
   assert.match(st, /<w:settings [^>]*><w:evenAndOddHeaders\/><w:compat>/);
+});
+
+test("줄 간격: rhwp 160% → Word 배수 1.6(line 384 auto), 고정 값은 exact, spacing 은 ind·jc 앞", () => {
+  const bs: Block[] = [
+    { t: "p", align: "both", indentPt: 10, linePct: 160, runs: [{ text: "가" }] },
+    { t: "p", linePt: 16, runs: [{ text: "나" }] },
+    { t: "table", rows: [[{ colspan: 1, rowspan: 1, blocks: [{ t: "p", linePct: 130, runs: [{ text: "칸" }] }] }]] },
+  ];
+  const doc = dec.decode(ff.unzipSync(buildDocx(bs, A4, ff.zipSync))["word/document.xml"]);
+  assert.match(doc, /<w:pPr><w:spacing w:line="384" w:lineRule="auto"\/><w:ind w:firstLine="200"\/><w:jc w:val="both"\/><\/w:pPr>/);
+  assert.match(doc, /<w:pPr><w:spacing w:line="320" w:lineRule="exact"\/><\/w:pPr><w:r><w:t xml:space="preserve">나/);
+  assert.match(doc, /<w:tc>.*<w:spacing w:line="312" w:lineRule="auto"\/>.*칸/); // 표 칸 안 문단도
+});
+
+test("구역마다 쪽 크기·방향: 앞 구역 sectPr 은 그 구역 끝 문단에, 마지막은 body 끝에", () => {
+  const land: PageSetup = { ...A4, w: A4.h, h: A4.w };
+  const hf: HeaderFooter[] = [{ kind: "header", applyTo: 0, paras: [{ t: "p", runs: [{ text: "머리" }] }] }];
+  const bs: Block[] = [
+    { t: "p", runs: [{ text: "세로 쪽" }] },
+    { t: "img", mime: "image/png", data: PNG1, wPx: 4000, hPx: 100 },
+    { t: "p", linePct: 160, runs: [{ text: "가로 끝" }] },
+    { t: "table", rows: [[cell("셋째")]] },
+  ];
+  const doc = dec.decode(ff.unzipSync(buildDocx(bs, A4, ff.zipSync, { hf, sections: [{ at: 0, page: A4 }, { at: 1, page: land }, { at: 3, page: A4 }] }))["word/document.xml"]);
+  const sect = (pg: PageSetup) => `<w:sectPr><w:headerReference w:type="default" r:id="rIdHdr1"/><w:pgSz w:w="${pg.w}" w:h="${pg.h}"${pg.w > pg.h ? ' w:orient="landscape"' : ""}/>`;
+  // 1구역: 마지막 문단 pPr 안에(머리글은 구역마다 같은 것)
+  assert.ok(doc.includes(`<w:p><w:pPr>${sect(A4)}`), "1구역 끝 문단");
+  // 2구역: 그림 폭은 가로 쪽 본문 폭에 맞추고, 끝 문단 pPr 의 spacing 뒤에 sectPr
+  assert.equal(Number(/<wp:extent cx="(\d+)"/.exec(doc)?.[1]), (land.w - land.left - land.right) * 635);
+  assert.ok(doc.includes(`<w:pPr><w:spacing w:line="384" w:lineRule="auto"/>${sect(land)}`), "2구역 끝 문단");
+  // 3구역(마지막): 표로 끝나서 빈 문단 뒤 body 의 sectPr
+  assert.ok(doc.includes(`</w:tbl><w:p/>${sect(A4)}`) && doc.endsWith("</w:sectPr></w:body></w:document>"));
+  assert.equal((doc.match(/<w:sectPr>/g) || []).length, 3);
+  // 표로 끝나는 앞 구역은 빈 문단에 걸어요 · 빈 구역과 순서가 이상한 값은 빼요
+  const d2 = dec.decode(ff.unzipSync(buildDocx([{ t: "table", rows: [[cell("a")]] }, { t: "p", runs: [{ text: "b" }] }], A4, ff.zipSync, { sections: [{ at: 0, page: A4 }, { at: 1, page: land }, { at: 1, page: A4 }] }))["word/document.xml"]);
+  assert.ok(d2.includes(`</w:tbl><w:p><w:pPr><w:sectPr><w:pgSz w:w="${A4.w}"`));
+  assert.equal((d2.match(/<w:sectPr>/g) || []).length, 2);
+  assert.match(d2, /w:orient="landscape"\/><w:pgMar[^>]*\/><\/w:sectPr><\/w:body>/);
+});
+
+test("Word 표는 한 줄 63칸까지: 넘으면 만들지 않아요(칸 안 표까지 봐요)", () => {
+  const row = (n: number) => [Array.from({ length: n }, (_, i) => cell(String(i)))];
+  assert.equal(WORD_MAX_COLS, 63);
+  assert.equal(widestTable([{ t: "table", rows: row(63) }]), 63);
+  assert.ok(buildDocx([{ t: "table", rows: row(63) }], A4, ff.zipSync).length > 0);
+  const nested: Block[] = [{ t: "table", rows: [[{ colspan: 1, rowspan: 1, blocks: [{ t: "table", rows: row(64) }] }]] }];
+  assert.equal(widestTable(nested), 64);
+  assert.throws(() => buildDocx(nested, A4, ff.zipSync), (e: unknown) => e instanceof DocxTooWideError && e.cols === 64);
 });

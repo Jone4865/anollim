@@ -35,8 +35,8 @@ export function mountMask(root: HTMLElement): Mounted {
   const canvas = h("canvas", { class: "mask-canvas", role: "img", "aria-label": "가릴 곳을 끌어서 네모로 칠하는 곳" });
   const stage = h("div", { class: "mask-stage" }, canvas);
   const pageInfo = h("span", { class: "muted" });
-  const prevBtn = h("button", { type: "button", class: "btn sm", onclick: () => go(cur - 1) }, "‹ 앞 쪽");
-  const nextBtn = h("button", { type: "button", class: "btn sm", onclick: () => go(cur + 1) }, "뒤 쪽 ›");
+  const prevBtn = h("button", { type: "button", class: "btn sm", onclick: () => go(cur - 1) }, icon("back"), "앞 쪽");
+  const nextBtn = h("button", { type: "button", class: "btn sm", onclick: () => go(cur + 1) }, "뒤 쪽", icon("next"));
   const pager = h("div", { class: "row mask-pager" }, prevBtn, pageInfo, nextBtn);
   const count = h("span", { class: "muted" });
   const undoBtn = h("button", { type: "button", class: "btn sm", onclick: () => { page().masks.pop(); changed(); } }, "되돌리기");

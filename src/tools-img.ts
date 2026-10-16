@@ -1,5 +1,5 @@
 // 이미지 도구: 이미지→PDF / 압축·변환·크기 / 사진 정보(EXIF) 지우기
-import { type SegOption, h, ICONS, icon, iconBtn, dropzone, progress, alertBox, errMsg, resultItem, sortable, seg, filterFiles, LIMITS, runPdf, decodeImage, drawToCanvas, canvasToBlob, canEncode, thumbURL, makeZip, download, toast } from "./ui.js";
+import { type SegOption, h, ICONS, icon, arrowed, iconBtn, dropzone, progress, alertBox, errMsg, resultItem, sortable, seg, filterFiles, LIMITS, runPdf, decodeImage, drawToCanvas, canvasToBlob, canEncode, thumbURL, makeZip, download, toast } from "./ui.js";
 import { formatSize, outName, moveItem, savedPercent, fitWithin, extFor, kindOf, mmToPt, uniqueNames, formatCoord } from "./lib.js";
 import { vendorImport, type ExifrModule, type Exifr, type ExifData } from "./vendor.js";
 import type { Mounted } from "./app.js";
@@ -222,7 +222,7 @@ export function mountCompress(root: HTMLElement): Mounted {
       const before = results.reduce((a, r) => a + r.it.file.size, 0), after = results.reduce((a, r) => a + r.blob.size, 0);
       const pct = savedPercent(before, after);
       const box = h("div", { class: "result", id: "result" },
-        h("h2", {}, icon("ok"), `${results.length}장 끝! ${formatSize(before)} → ${formatSize(after)}`, h("span", { class: `pill ${pct >= 0 ? "good" : "bad"}` }, pct >= 0 ? `${pct}% 줄었어요` : `${-pct}% 커졌어요`)));
+        h("h2", {}, icon("ok"), ...arrowed(`${results.length}장 끝! ${formatSize(before)} → ${formatSize(after)}`), h("span", { class: `pill ${pct >= 0 ? "good" : "bad"}` }, pct >= 0 ? `${pct}% 줄었어요` : `${-pct}% 커졌어요`)));
       if (results.length > 1) {
         const zipBtn: HTMLButtonElement = h("button", { type: "button", class: "btn primary", onclick: async () => { zipBtn.disabled = true; try { download(await makeZip(results), `사진-${results.length}장-변환.zip`); } catch (e) { err.show(errMsg(e)); } zipBtn.disabled = false; } }, icon("dl"), "모두 ZIP으로 받기");
         box.append(h("div", { class: "row", style: "margin-bottom:8px" }, zipBtn));
@@ -343,7 +343,7 @@ export function mountExif(root: HTMLElement): Mounted {
       }
       for (const r of results) box.append(resultItem({ name: r.name, blob: r.blob, thumb: h("img", { class: "fthumb", src: r.it.thumb, alt: "" }), extra: h("span", {},
         r.after.count === 0 ? h("span", { class: "chip clean" }, "다시 확인: 남은 정보 없음") : h("span", { class: "chip" }, `남은 정보 ${r.after.count}개`),
-        r.shrunk ? h("span", { class: "chip warn", title: "이 기기가 다룰 수 있는 크기보다 커서 줄였어요" }, `크기 줄어듦 ${r.shrunk}`) : null) }));
+        r.shrunk ? h("span", { class: "chip warn", title: "이 기기가 다룰 수 있는 크기보다 커서 줄였어요" }, "크기 줄어듦 ", ...arrowed(r.shrunk)) : null) }));
       if (results.some((r) => r.shrunk)) box.append(h("p", { class: "hint" }, "이 기기가 한 번에 다룰 수 있는 크기보다 큰 사진은 해상도가 줄어요. 원래 크기가 필요하면 PC에서 해 주세요."));
       out.replaceChildren(box);
     } catch (e) { err.show(errMsg(e)); }

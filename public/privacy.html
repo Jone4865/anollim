@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>개인정보 처리방침 · 집문서</title>
+<meta name="description" content="집문서가 넣은 파일과 브라우저 설정을 어떻게 다루는지, 밖에서 받는 것과 직접 확인하는 방법을 적었어요.">
+<link rel="canonical" href="https://jipmunseo.pages.dev/privacy">
+<meta name="theme-color" content="#f6f1e7">
+<link rel="icon" href="/assets/favicon.png" type="image/png">
+<link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css" integrity="sha384-2nNKoOPayicGa+aRguOQuiZP+RqQ4G3jalfDeOgftkKD7zBM2gJXTwcFqCZltdv0" crossorigin="anonymous">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .pv { padding: 18px 0 8px; }
+  .pv h1 { font-size: clamp(32px, 5vw, 46px); margin: 0 0 10px; }
+  .pv .lead { margin-bottom: 26px; }
+  .pv .note h2 { font-size: 20px; margin: 26px 0 8px; letter-spacing: -.02em; }
+  .pv .note h2:first-child { margin-top: 0; }
+  .pv .note p, .pv .note li { color: var(--muted); line-height: 1.8; }
+  .pv .note b { color: var(--ink); }
+  .pv .note ul { padding-left: 20px; margin: 6px 0 12px; }
+  .pv .trust { padding-bottom: 40px; }
+  .pv .slip { margin-top: 0; }
+  @media (max-width: 820px) { .pv .trust { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 600px) { .pv .note { padding: 22px 18px 16px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a class="brand" href="/"><img src="/assets/icon.svg" alt="" width="38" height="38"><span>집문서<small>서류 파일 도구</small></span></a>
+    <div class="links"><a href="/#tools">모든 도구</a><a href="/hwp">HWP 파일 보기</a></div>
+  </nav>
+
+  <main class="pv">
+    <h1>개인정보 처리방침</h1>
+    <p class="lead">2026년 10월 16일부터 적용해요. 집문서에는 로그인이 없고, 따로 모으는 개인정보도 없어요.</p>
+
+    <div class="trust">
+      <div class="note">
+        <h2>넣은 파일</h2>
+        <p>PDF·사진·한글 문서는 이 브라우저 메모리에서 열고 고쳐요. 집문서에는 파일을 받는 서버가 없고, 사이트 코드는 넣은 파일을 다른 곳으로 보내지 않아요. 탭을 닫으면 메모리에서 사라져요.</p>
+        <p>문서 암호는 그 자리에서 문서를 여는 데만 쓰고 저장하지 않아요. 만든 PDF·Word·그림·텍스트 파일도 이 기기에서 만들어 바로 내려받아요.</p>
+
+        <h2>이 브라우저에 기억하는 것</h2>
+        <p>HWP 보기에서 고른 <b>화질</b>과 <b>굵은 글꼴 켜기</b>, 이 두 가지 설정만 localStorage 에 남겨요. 문서 이름이나 내용은 남기지 않아요. 브라우저의 사이트 데이터를 지우면 함께 지워져요.</p>
+
+        <h2>밖에서 받는 것</h2>
+        <ul>
+          <li><b>Pretendard 글꼴</b>: jsDelivr(cdn.jsdelivr.net)에서 받아요.</li>
+          <li><b>배경 지우기 AI 모델(약 56MB)</b>: 배경 지우기를 처음 쓸 때 IMG.LY(staticimgly.com)에서 받아요. 모델만 받고 사진은 보내지 않아요.</li>
+        </ul>
+        <p>이 두 곳에 접속할 때 그 서버에 접속 정보(IP 주소 등)가 남을 수 있어요. 한글 문서 보기 도구와 문서용 글꼴은 이 사이트에서 받아요. 방문 분석이나 광고 코드는 넣지 않았어요.</p>
+
+        <h2>직접 확인하는 방법</h2>
+        <ol class="steps">
+          <li>PC에서 <kbd>F12</kbd>(맥은 <kbd>⌥⌘I</kbd>)를 눌러 개발자 도구를 열어요.</li>
+          <li><b>네트워크</b> 탭을 연 채로 아무 도구에 파일을 넣어 보세요.</li>
+          <li>파일 크기만 한 요청이 생기지 않는 걸 볼 수 있어요.</li>
+        </ol>
+
+        <h2>문의</h2>
+        <p>개인정보에 관한 문의나 권리 행사는 <a href="mailto:cowhddnjsdl0@gmail.com">cowhddnjsdl0@gmail.com</a> 으로 보내 주세요. 처리방침이 바뀌면 이 페이지에 날짜와 함께 적어요.</p>
+      </div>
+      <div class="slip" aria-label="걸어 둔 보안 정책 요약">
+        <p class="slip-h">걸어 둔 보안 정책(CSP)</p>
+        <dl>
+          <div><dt>데이터 보낼 수 있는 곳</dt><dd>이 사이트 + 모델 받는 곳</dd></div>
+          <div><dt>밖에서 받는 스크립트</dt><dd>배경 지우기 모델만</dd></div>
+          <div><dt>밖에서 받는 글꼴</dt><dd>Pretendard (무결성 검사)</dd></div>
+          <div><dt>파일 받는 서버</dt><dd class="big">0개</dd></div>
+          <div><dt>폼 전송</dt><dd>막음</dd></div>
+          <div><dt>방문 분석 · 광고</dt><dd>없음</dd></div>
+        </dl>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>문의 <a href="mailto:cowhddnjsdl0@gmail.com">cowhddnjsdl0@gmail.com</a> · <a class="donate" href="https://toon.at/donate/ggyaaaaak" target="_blank" rel="noopener"><svg class="ic-cup" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 3.2c-.9 1 .9 1.8 0 2.8M12.6 3.2c-.9 1 .9 1.8 0 2.8"/><path d="M4.5 9h11v4.5a4.5 4.5 0 0 1-4.5 4.5h-2a4.5 4.5 0 0 1-4.5-4.5z"/><path d="M15.5 10.5h1.3a2.3 2.3 0 0 1 0 4.6h-1.5"/><path d="M3.5 21h14"/></svg>응원하기</a> · <a href="/licenses">라이선스 고지</a></p>
+    <p>© 2026 집문서 · <a href="https://jone-lab.pages.dev">Jone Lab의 다른 프로젝트 보기</a></p>
+  </footer>
+</div>
+</body>
+</html>

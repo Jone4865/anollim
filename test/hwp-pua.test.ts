@@ -36,7 +36,8 @@ test("기호: 검증 표·글머리 표·네모 숫자·HWP5 기호 자리", () 
   assert.equal(puaToText("\u{F0854}용비어천가\u{F0855}").text, "《용비어천가》");
   assert.equal(puaToText("\u{F02B1}\u{F02B2}\u{F02C4}\u{F02B0}\u{F02C5}").text, "①②⑳⓪⑫"); // 네모 안 숫자(텍스트 뽑기용 표면)
   assert.equal(puaToText("\u{F02CE}\u{F02E1}").text, "120"); // 반전 사각형 안 숫자 1, 20
-  assert.equal(puaToText("\uF06C 항목 \uF0FC").text, "● 항목 ✔"); // U+F0xx 기호 글꼴 글머리
+  assert.equal(puaToText("\uF06C 항목 \uF0FC").text, "● 항목 ✔\uFE0E"); // 이모지로 안 그려지게 U+FE0E
+  assert.equal(puaToText("\uF0A1\uF036").text, "◯⧗"); // 컬러 이모지(⚪⌛) 대신 같은 모양 글자 // U+F0xx 기호 글꼴 글머리
   assert.equal(puaToText("\u{F080F}\u{F080F}").text, "━━");
   assert.equal(puaToText("(\u{F012B})").text, "((인))");
   // HWP5 는 같은 기호를 0xA000|X 로 실어요 → 평면 15 로 맞춰 바꿔요

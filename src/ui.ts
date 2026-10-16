@@ -1,4 +1,5 @@
 // 공통 UI 조각 + 라이브러리 로더
+import { ICONS } from "./icons.js";
 import { formatSize, kindOf, moveItem, zipWriter, uniqueName } from "./lib.js";
 import { vendorImport, type PdfjsModule, type PdfjsDocument, type HeicToModule, type FflateModule } from "./vendor.js";
 
@@ -23,24 +24,20 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs?: Attrs |
   return el;
 }
 
-const P = 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
-export const ICONS: Record<string, string> = {
-  up: `<svg viewBox="0 0 24 24" ${P}><path d="M12 19V5M6 11l6-6 6 6"/></svg>`,
-  down: `<svg viewBox="0 0 24 24" ${P}><path d="M12 5v14M6 13l6 6 6-6"/></svg>`,
-  left: `<svg viewBox="0 0 24 24" ${P}><path d="M19 12H5M11 6l-6 6 6 6"/></svg>`,
-  right: `<svg viewBox="0 0 24 24" ${P}><path d="M5 12h14M13 6l6 6-6 6"/></svg>`,
-  x: `<svg viewBox="0 0 24 24" ${P}><path d="M6 6l12 12M18 6L6 18"/></svg>`,
-  rotL: `<svg viewBox="0 0 24 24" ${P}><path d="M4 4v5h5"/><path d="M4.5 13a8 8 0 1 0 2.3-6.2L4 9"/></svg>`,
-  rotR: `<svg viewBox="0 0 24 24" ${P}><path d="M20 4v5h-5"/><path d="M19.5 13a8 8 0 1 1-2.3-6.2L20 9"/></svg>`,
-  grip: `<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>`,
-  check: `<svg viewBox="0 0 24 24" ${P} stroke-width="3"><path d="M5 12l5 5 9-10"/></svg>`,
-  ok: `<svg viewBox="0 0 24 24" ${P}><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>`,
-  dl: `<svg viewBox="0 0 24 24" ${P}><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>`,
-  upload: `<svg class="drop-ico" viewBox="0 0 80 60" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 20 h26 l8 8 v30 h-34 z" stroke-opacity=".5"/><path d="M18 24 h26 l8 8 v26 h-34 z" fill="rgba(255,255,255,.1)"/><path d="M44 24 v8 h8"/><path d="M36 2 v24 M29 19 l7 7 l7 -7" stroke-width="3"/></svg>`,
-  shield: `<svg viewBox="0 0 24 24" ${P}><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>`,
-  back: `<svg viewBox="0 0 24 24" ${P} width="16" height="16"><path d="M15 6l-6 6 6 6"/></svg>`,
-};
+export { ICONS };
 export const icon = (name: string) => h("span", { html: ICONS[name], style: "display:contents" });
+/**
+ * 글 속 화살표(→)를 집문서 화살표 아이콘으로: "이미지 → PDF" 처럼. 화면 읽기 프로그램·복사에는 숨긴 "→" 글자가 남아요.
+ * deco: 꾸밈 화살표("알려 주세요 →")는 숨긴 글자 없이 아이콘만
+ */
+export function arrowed(text: string, deco = false): Kid[] {
+  const out: Kid[] = [];
+  text.split(/\s*→\s*/).forEach((part, i) => {
+    if (i) out.push(h("span", { class: "arr", html: ICONS.arrow }), deco ? null : h("span", { class: "sr" }, "→"));
+    if (part) out.push(part);
+  });
+  return out;
+}
 export function iconBtn(name: string, label: string, onClick: (e: MouseEvent) => void, extra = ""): HTMLButtonElement {
   return h("button", { type: "button", class: `icon-btn ${extra}`, title: label, "aria-label": label, html: ICONS[name], onclick: onClick });
 }

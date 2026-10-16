@@ -47,6 +47,8 @@ test("머리말·꼬리말·각주·미주: Word 로 옮기고, 텍스트엔 각
     const warn: Warn = {};
     const m = collectDocument(d, warn, { headerFooter: true });
     assert.deepEqual(warn, {}, f);
+    assert.deepEqual(m.sections, [0]); // 구역 하나
+    assert.ok(m.blocks.some((b) => b.t === "p" && b.linePct === 160), "줄 간격 160%"); 
     assert.deepEqual(m.hf.map((x) => `${x.kind}:${x.applyTo}:${x.paras.map((p) => p.runs.map((r) => r.text).join("")).join("|")}`), ["header:0:집문서 머리말 <시험>", "footer:0:집문서 꼬리말"]);
     const files = ff.unzipSync(buildDocx(m.blocks, pageSetupFromHwp(JSON.parse(d.getPageDef(0))), ff.zipSync, { hf: m.hf }));
     const xml = dec.decode(files["word/document.xml"]);

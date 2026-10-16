@@ -4,8 +4,8 @@
 // 글자 폭 측정기(measureTextWidth)는 두지 않아요: 0.8.7 의 rhwp.js 는 그 콜백을 찾지 않아요(README 의 '필수 설정'은 옛 설명, HWP_SPEC 3-4).
 // 버전을 올릴 때 dev/update-rhwp.sh 가 다시 확인해요.
 import init, { HwpDocument } from "vendor:rhwp";
-import { collectDocument, blocksToText, type Warn } from "./hwp-export.js";
-import { buildDocx, normalizeImages, pageSetupFromHwp, A4, type ZipSync } from "./hwp-docx.js";
+import { collectDocument, blocksToText, widestTable, WORD_MAX_COLS, type Warn } from "./hwp-export.js";
+import { buildDocx, normalizeImages, pageSetupFromHwp, A4, type PageSetup, type ZipSync } from "./hwp-docx.js";
 
 const WASM = "/vendor/rhwp-0.8.7/rhwp_bg.wasm";
 const FFLATE = "/vendor/fflate-0.8.2.mjs"; // 집문서에 이미 있는 zip 라이브러리. Word 를 고를 때만 받아요
@@ -83,11 +83,19 @@ self.onmessage = async (ev: MessageEvent<Msg>) => {
       const { puaFixer } = await import("./hwp-pua.js");
       const model = collectDocument(d, warn, { images: op === "docx", headerFooter: op === "docx", onProgress, fixText: puaFixer(warn) });
       if (op === "txt") { post({ id, type: "done", result: { text: blocksToText(model.blocks), warn } }); return; }
+      // Word 는 한 줄 63칸이 넘는 표를 못 열어요 → 만들지 않고 화면이 안내해요
+      const wide = widestTable(model.blocks);
+      if (wide > WORD_MAX_COLS) { post({ id, type: "done", result: { bytes: new Uint8Array(0), warn, tooWide: wide } }); return; }
       post({ id, type: "progress", done: 1, total: 1, phase: "pack" });
       const { zipSync } = (await import(/* @vite-ignore */ FFLATE)) as { zipSync: ZipSync };
-      let page = A4; try { page = pageSetupFromHwp(JSON.parse(d.getPageDef(0))); } catch { /* A4 */ }
+      // 구역마다 쪽 크기·방향·여백(못 읽으면 앞 구역 것, 첫 구역은 A4)
+      const pages: PageSetup[] = [];
+      for (let s = 0; s < model.sections.length; s++) {
+        let pg = pages[s - 1] ?? A4; try { pg = pageSetupFromHwp(JSON.parse(d.getPageDef(s))); } catch { /* 앞 구역 것 */ }
+        pages.push(pg);
+      }
       await normalizeImages(model.blocks, bmpToPng);
-      const bytes = buildDocx(model.blocks, page, zipSync, { hf: model.hf });
+      const bytes = buildDocx(model.blocks, pages[0] ?? A4, zipSync, { hf: model.hf, sections: model.sections.map((at, s) => ({ at, page: pages[s] })) });
       post({ id, type: "done", result: { bytes, warn } }, [bytes.buffer]);
     } else if (op === "close") {
       doc?.free(); doc = null;

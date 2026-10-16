@@ -2,9 +2,10 @@
 // 블록 모델 → Word(.docx). OOXML(ECMA-376) 부품을 직접 써요: [Content_Types].xml · _rels/.rels · word/document.xml
 // · word/styles.xml · word/_rels/document.xml.rels · word/settings.xml · (있을 때만) footnotes.xml · endnotes.xml · header*.xml · footer*.xml · media/*.
 // 압축은 집문서에 이미 있는 fflate(zipSync)를 받아 써요. docx 패키지를 쓰지 않은 이유는 HWP_SPEC 12-4-5.
-// 글·표·그림 우선, 서식은 근사(글꼴 이름·크기·굵게·기울임·밑줄·취소선·색·위/아래 첨자·정렬·들여쓰기·칸 병합·칸 테두리·칸 배경).
+// 글·표·그림 우선, 서식은 근사(글꼴 이름·크기·굵게·기울임·밑줄·취소선·색·위/아래 첨자·정렬·들여쓰기·줄 간격·칸 병합·칸 테두리·칸 배경).
+// 구역마다 쪽 크기·방향·여백을 따로(구역 끝 문단의 sectPr). 63칸이 넘는 표는 Word 가 못 열어서 만들지 않아요(widestTable 로 미리 막아요).
 // 머리말·꼬리말은 Word 머리글·바닥글로, 각주·미주는 Word 각주·미주로(글만, 0장 결정 9번).
-import { type Block, type Cell, type HeaderFooter, type Img, type Para, type Run, type Table, tableGrid } from "./hwp-export.js";
+import { type Block, type Cell, type HeaderFooter, type Img, type Para, type Run, type Table, tableGrid, widestTable, WORD_MAX_COLS } from "./hwp-export.js";
 
 type Lv = 0 | 6;
 /** fflate 0.8.2 zipSync 중 쓰는 모양만 */
@@ -72,13 +73,22 @@ export function wordHeaderSlots(hf: HeaderFooter[]): { evenAndOdd: boolean; part
   return { evenAndOdd, parts };
 }
 
-export function buildDocx(blocks: Block[], page: PageSetup, zipSync: ZipSync, opts: { mtime?: Date; hf?: HeaderFooter[] } = {}): Uint8Array {
+/** 구역 하나: blocks 의 at 자리부터 다음 구역 앞까지가 이 쪽 설정이에요 */
+export interface DocxSection { at: number; page: PageSetup }
+/** 63칸 넘는 표가 있어 Word 로 만들지 않았을 때 */
+export class DocxTooWideError extends Error {
+  constructor(readonly cols: number) { super(`표 한 줄이 ${cols}칸이에요. Word 표는 ${WORD_MAX_COLS}칸까지만 열려요.`); }
+}
+
+export function buildDocx(blocks: Block[], page: PageSetup, zipSync: ZipSync, opts: { mtime?: Date; hf?: HeaderFooter[]; sections?: DocxSection[] } = {}): Uint8Array {
+  const wide = widestTable(blocks);
+  if (wide > WORD_MAX_COLS) throw new DocxTooWideError(wide); // 만들어도 Word 가 '읽을 수 없는 내용'이라며 못 열어요
   const media: Record<string, [Uint8Array, { level: Lv }]> = {};
   const rels: string[] = [`<Relationship Id="rIdStyles" Type="${REL}styles" Target="styles.xml"/>`];
   const overrides: string[] = [];
   const parts: Record<string, Uint8Array> = {};
   let pic = 0;
-  const textW = Math.max(1440, page.w - page.left - page.right);
+  const textWOf = (pg: PageSetup) => Math.max(1440, pg.w - pg.left - pg.right);
   const footnotes: string[] = [], endnotes: string[] = [];
 
   const rPr = (r: Run): string => {
@@ -109,13 +119,17 @@ export function buildDocx(blocks: Block[], page: PageSetup, zipSync: ZipSync, op
     return `<w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:${tag}Reference w:id="${id}"/></w:r>`;
   };
   const run = (r: Run): string => (r.note ? noteRef(r) : textRun(r.text, rPr(r)));
-  const para = (p: Para): string => {
+  const para = (p: Para, sectPr = ""): string => {
     let pp = "";
+    // 줄 간격: HWP '글자에 따라 160%' → Word 배수 1.6(240 × 1.6 = 384, auto). 고정 값은 exact(pt × 20). CT_PPr 순서상 spacing → ind → jc
+    if (p.linePct) pp += `<w:spacing w:line="${Math.max(24, Math.min(2400, Math.round(240 * p.linePct / 100)))}" w:lineRule="auto"/>`;
+    else if (p.linePt) pp += `<w:spacing w:line="${Math.max(20, Math.min(31680, Math.round(p.linePt * 20)))}" w:lineRule="exact"/>`;
     const ind = p.indentPt ? Math.round(p.indentPt * 20) : 0;
     // HWP 내어쓰기(음수)는 첫 줄이 왼쪽 여백에 있고 다음 줄부터 들어가요. rhwp HTML 은 text-indent 음수만 줘서 Word 에선 왼쪽을 그만큼 더해요.
     const left = (p.leftPt ? Math.round(p.leftPt * 20) : 0) + (ind < 0 ? -ind : 0);
     if (left || ind) pp += `<w:ind${left ? ` w:left="${left}"` : ""}${ind > 0 ? ` w:firstLine="${ind}"` : ind < 0 ? ` w:hanging="${-ind}"` : ""}/>`;
     if (p.align && p.align !== "left") pp += `<w:jc w:val="${p.align}"/>`;
+    pp += sectPr; // 구역 끝 문단: sectPr 은 pPr 맨 끝(rPr 뒤)
     return `<w:p>${pp ? `<w:pPr>${pp}</w:pPr>` : ""}${p.runs.map(run).join("")}</w:p>`;
   };
   const image = (im: Img, maxTw: number): string => {
@@ -161,15 +175,30 @@ export function buildDocx(blocks: Block[], page: PageSetup, zipSync: ZipSync, op
     return x;
   }
 
-  let body = blocksXml(blocks, textW);
-  if (!body.endsWith("</w:p>") && !body.endsWith("<w:p/>")) body += "<w:p/>";
+  // 구역 나누기: 구역 순서대로, 빈 구역은 빼요. 앞 구역들의 sectPr 은 그 구역 끝 문단에, 마지막 구역 것은 body 끝에
+  const secs = (opts.sections?.length ? opts.sections : [{ at: 0, page }])
+    .map((x) => ({ at: Math.max(0, Math.min(blocks.length, x.at)), page: x.page }))
+    .filter((x, i, a) => i === 0 || x.at > a[i - 1].at);
+  secs[0] = { at: 0, page: secs[0].page };
+  const ranges = secs.map((x, i) => ({ page: x.page, blocks: blocks.slice(x.at, i + 1 < secs.length ? secs[i + 1].at : blocks.length) })).filter((r, i, a) => r.blocks.length || i === a.length - 1);
+  const sectTok = (i: number) => `\u0000SECT${i}\u0000`; // 머리글·미주를 다 본 뒤 sectPr 로 바꿔요
+  let body = "";
+  ranges.forEach((r, i) => {
+    const tw = textWOf(r.page), bs = r.blocks, tail = bs[bs.length - 1];
+    if (i === ranges.length - 1) {
+      let x = blocksXml(bs, tw);
+      if (!x.endsWith("</w:p>") && !x.endsWith("<w:p/>")) x += "<w:p/>"; // 문서는 문단으로 끝나요
+      body += x + sectTok(i);
+    } else if (tail?.t === "p") body += blocksXml(bs.slice(0, -1), tw) + para(tail, sectTok(i));
+    else body += blocksXml(bs, tw) + `<w:p><w:pPr>${sectTok(i)}</w:pPr></w:p>`; // 표·그림으로 끝나는 구역은 빈 문단에 걸어요
+  });
 
   // 머리글·바닥글 (글만)
   const hs = wordHeaderSlots(opts.hf ?? []);
   let refs = "", nh = 0, nf = 0;
   for (const part of hs.parts) {
     const isH = part.kind === "header", n = isH ? ++nh : ++nf, file = `${part.kind}${n}.xml`, id = `rId${isH ? "Hdr" : "Ftr"}${n}`, root = isH ? "hdr" : "ftr";
-    let x = part.paras.map(para).join(""); if (!x) x = "<w:p/>";
+    let x = part.paras.map((p) => para(p)).join(""); if (!x) x = "<w:p/>";
     parts[`word/${file}`] = enc.encode(`${XML}<w:${root} ${NS}>${x}</w:${root}>`);
     rels.push(`<Relationship Id="${id}" Type="${REL}${part.kind}" Target="${file}"/>`);
     overrides.push(`<Override PartName="/word/${file}" ContentType="${CT}${part.kind}+xml"/>`);
@@ -195,8 +224,10 @@ export function buildDocx(blocks: Block[], page: PageSetup, zipSync: ZipSync, op
   rels.push(`<Relationship Id="rIdSettings" Type="${REL}settings" Target="settings.xml"/>`);
   overrides.push(`<Override PartName="/word/settings.xml" ContentType="${CT}settings+xml"/>`);
 
-  const orient = page.w > page.h ? ' w:orient="landscape"' : "";
-  const doc = `${XML}<w:document ${NS}><w:body>${body}<w:sectPr>${refs}${enPr}<w:pgSz w:w="${page.w}" w:h="${page.h}"${orient}/><w:pgMar w:top="${page.top}" w:right="${page.right}" w:bottom="${page.bottom}" w:left="${page.left}" w:header="${page.header}" w:footer="${page.footer}" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+  // 머리글·바닥글은 구역마다 같은 것을 가리켜요(구역별로 다른 머리말은 첫 것만 옮겨요). 새 구역은 새 쪽에서 시작(Word 기본 nextPage = HWP 구역 나누기)
+  const sectPr = (pg: PageSetup) => `<w:sectPr>${refs}${enPr}<w:pgSz w:w="${pg.w}" w:h="${pg.h}"${pg.w > pg.h ? ' w:orient="landscape"' : ""}/><w:pgMar w:top="${pg.top}" w:right="${pg.right}" w:bottom="${pg.bottom}" w:left="${pg.left}" w:header="${pg.header}" w:footer="${pg.footer}" w:gutter="0"/></w:sectPr>`;
+  body = body.replace(/\u0000SECT(\d+)\u0000/g, (_, i: string) => sectPr(ranges[Number(i)].page));
+  const doc = `${XML}<w:document ${NS}><w:body>${body}</w:body></w:document>`;
   const styles = `${XML}<w:styles ${W_NS}><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="${DEFAULT_FONT}" w:hAnsi="${DEFAULT_FONT}" w:eastAsia="${DEFAULT_FONT}" w:cs="${DEFAULT_FONT}"/><w:sz w:val="20"/><w:szCs w:val="20"/><w:lang w:val="ko-KR" w:eastAsia="ko-KR" w:bidi="ar-SA"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style><w:style w:type="table" w:default="1" w:styleId="TableNormal"><w:name w:val="Normal Table"/><w:uiPriority w:val="99"/><w:semiHidden/><w:unhideWhenUsed/><w:tblPr><w:tblInd w:w="0" w:type="dxa"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="108" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tblCellMar></w:tblPr></w:style></w:styles>`;
   const types = `${XML}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Default Extension="jpeg" ContentType="image/jpeg"/><Default Extension="gif" ContentType="image/gif"/><Default Extension="bmp" ContentType="image/bmp"/><Default Extension="wmf" ContentType="image/x-wmf"/><Default Extension="emf" ContentType="image/x-emf"/><Override PartName="/word/document.xml" ContentType="${CT}document.main+xml"/><Override PartName="/word/styles.xml" ContentType="${CT}styles+xml"/>${overrides.join("")}</Types>`;
   const rootRels = `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}officeDocument" Target="word/document.xml"/></Relationships>`;

@@ -1,5 +1,5 @@
 // PDF 도구: 합치기 / 나누기·페이지 빼기 / 회전·순서
-import { h, ICONS, icon, iconBtn, dropzone, progress, alertBox, errMsg, resultItem, sortable, seg, filterFiles, LIMITS, runPdf, openPdfjs, thumbRenderer, makeZip, toast, renderPdfPage, canvasToBlob } from "./ui.js";
+import { h, ICONS, icon, arrowed, iconBtn, dropzone, progress, alertBox, errMsg, resultItem, sortable, seg, filterFiles, LIMITS, runPdf, openPdfjs, thumbRenderer, makeZip, toast, renderPdfPage, canvasToBlob } from "./ui.js";
 import { formatSize, outName, moveItem, parseRanges, rangesToSet, formatRanges, uniqueNames, baseName, safeName, normRotation, savedPercent, COMPRESS_PRESETS, type CompressMode, type CompressLevel } from "./lib.js";
 import type { ShrinkStats } from "./pdf-shrink.js";
 import type { ThumbRenderer } from "./ui.js";
@@ -443,7 +443,7 @@ export function mountPdfCompress(root: HTMLElement): Mounted {
       if (pct < 0) notes.push("원본이 더 작아요. 원본을 그대로 쓰세요.");
       else if (pct < 3) notes.push(mode === "images" ? "더 줄일 게 거의 없었어요. 스캔한 서류라면 '쪽을 통째로 이미지로'를 써 보세요." : "더 줄일 게 거의 없었어요. 원본을 그대로 써도 돼요.");
       out.replaceChildren(h("div", { class: "result", id: "result" },
-        h("h2", {}, icon("ok"), `${formatSize(before)} → ${formatSize(blob.size)}`,
+        h("h2", {}, icon("ok"), ...arrowed(`${formatSize(before)} → ${formatSize(blob.size)}`),
           h("span", { class: `pill ${pct > 0 ? "good" : pct < 0 ? "bad" : ""}` }, pct > 0 ? `${pct}% 줄었어요` : pct < 0 ? `${-pct}% 커졌어요` : "거의 그대로")),
         notes.length ? h("p", { class: "hint", style: "margin:-4px 0 6px" }, notes.join(" ")) : null,
         resultItem({ name: outName(C().file.name, "줄임", "pdf"), blob, extra: mode === "images" ? "글자 그대로" : `${C().pages}쪽 · 이미지 PDF` })));

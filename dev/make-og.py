@@ -1,4 +1,4 @@
-# public/assets/og.svg (1200x630) 만들기 — 바탕 + 커팅 매트 위 도구 카드 + "서버로 보낸 파일 0 B" 배지. PNG 는 dev/render-png.sh
+# public/assets/og.svg (1200x630) 만들기 — 바탕 + 커팅 매트 위 도구 카드 + 주소 배지. PNG 는 dev/render-png.sh
 # 일러스트는 dev/art/t-*.svg (먼저 npx tsx dev/export-art.mjs)
 import re, os
 here = os.path.dirname(os.path.abspath(__file__))
@@ -21,15 +21,15 @@ og = f'''<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewB
 <rect x="626" y="46" width="548" height="548" rx="14" fill="none" stroke="#255a43" stroke-width="10"/>
 <text x="664" y="112" {F} font-weight="700" font-size="22" fill="#cfe3d6">작업대 · 쓸 도구를 고르세요</text>
 {cards}
-<rect x="70" y="224" width="400" height="34" fill="#2563eb" fill-opacity=".24"/>
+<rect x="70" y="224" width="336" height="34" fill="#2563eb" fill-opacity=".24"/>
 <text x="72" y="140" {F} font-weight="800" font-size="40" fill="#1f1d1a">집문서</text>
-<text x="72" y="250" {F} font-weight="900" font-size="78" fill="#1f1d1a" letter-spacing="-3">업로드 없는</text>
-<text x="72" y="345" {F} font-weight="900" font-size="78" fill="#1f1d1a" letter-spacing="-3">파일 도구</text>
-<text x="72" y="418" {F} font-weight="600" font-size="28" fill="#67615a">PDF 합치기 · 나누기 · 용량 줄이기</text>
-<text x="72" y="458" {F} font-weight="600" font-size="28" fill="#67615a">신분증 가리기 · 제출용 워터마크</text>
-<g transform="translate(72,500)"><rect width="392" height="76" rx="16" fill="#2563eb"/>
-<g transform="translate(18,16)" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2l18 7v13c0 11-8 19-18 21-10-2-18-10-18-21V9z"/><path d="M14 22l6 6 10-11"/></g>
-<text x="80" y="36" {F} font-weight="900" font-size="28" fill="#fff">0 B</text><text x="80" y="60" {F} font-weight="600" font-size="18" fill="#dbe6ff">서버로 보낸 파일 · jipmunseo.pages.dev</text></g>
+<text x="72" y="250" {F} font-weight="900" font-size="78" fill="#1f1d1a" letter-spacing="-3">서류 파일</text>
+<text x="72" y="345" {F} font-weight="900" font-size="78" fill="#1f1d1a" letter-spacing="-3">손보는 도구</text>
+<text x="72" y="418" {F} font-weight="600" font-size="28" fill="#67615a">HWP 보기 · PDF·Word로 저장</text>
+<text x="72" y="458" {F} font-weight="600" font-size="28" fill="#67615a">PDF 합치기 · 신분증 사본 가리기</text>
+<g transform="translate(72,506)"><rect width="352" height="64" rx="16" fill="#2563eb"/>
+<g transform="translate(18,14)" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2h14l10 10v24H8z"/><path d="M22 2v10h10"/><path d="M14 24l4 4 8-9"/></g>
+<text x="70" y="41" {F} font-weight="800" font-size="24" fill="#fff">jipmunseo.pages.dev</text></g>
 </svg>'''
 open(os.path.join(here, '..', 'public', 'assets', 'og.svg'), 'w').write(og)
 print('og.svg written')

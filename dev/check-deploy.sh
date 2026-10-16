@@ -29,6 +29,7 @@ for f in dist/js/*.js; do [[ -e $f ]] && check "/js/${f##*/}" 200 "$JS"; done
 check / 200 ^text/html
 check /hwp 200 ^text/html
 check /licenses 200 ^text/html
+check /privacy 200 ^text/html
 # 없는 주소: 404 여야 해요(첫 화면 200 이면 404.html 이 빠진 거예요)
 check /vendor/rhwp-0.8.7/fonts/NotExist-Bold.woff2 404 ^text/html
 check /vendor/nope.mjs 404 ^text/html

@@ -51,6 +51,7 @@ const MSG = {
   reading: "읽기용 보기예요. 한컴오피스와 글꼴·줄 간격·쪽 나눔이 조금 다를 수 있고, 고쳐 쓸 수는 없어요.",
   reopening: "문서를 다시 여는 중…",
   docxTooBig: "문서가 커서 Word로 옮기지 못했어요. 텍스트나 PDF로 저장해 보세요.",
+  docxTooWide: (cols: number) => `한 줄이 ${cols}칸인 표가 있어서 Word 파일을 만들지 않았어요. Word는 표 한 줄에 63칸까지만 열 수 있어요. PDF·쪽 그림·텍스트로는 저장할 수 있어요.`,
   txtTooBig: "문서가 커서 텍스트로 옮기지 못했어요. PDF로 저장해 보세요.",
   exportCrashed: "옮기는 중에 보기 도구가 멈췄어요. 다른 형식으로 저장해 보세요.",
   bigDocxMobile: "큰 문서라 휴대폰에서는 오래 걸리거나 멈출 수 있어요.",
@@ -80,7 +81,7 @@ const MSG = {
 
 const FORMAT_CARD: Record<ExportFormat, { title: string; tag: string; shape: boolean; desc: string }> = {
   pdf: { title: "PDF", tag: "모양 그대로", shape: true, desc: "보이는 그대로 쪽을 그림으로 담아요. 인쇄·제출용이에요. 글자 검색·복사는 안 돼요." },
-  docx: { title: "Word (.docx)", tag: "글 위주", shape: false, desc: "글과 표를 고쳐 쓸 수 있게 옮겨요. 글꼴·줄 간격·쪽 나눔은 원본과 달라져요." },
+  docx: { title: "Word (.docx)", tag: "글 위주", shape: false, desc: "글과 표를 고쳐 쓸 수 있게 옮겨요. 글꼴과 쪽 나눔은 원본과 달라져요." },
   png: { title: "쪽 그림 (PNG)", tag: "모양 그대로", shape: true, desc: "쪽마다 그림 한 장이에요. 카톡으로 바로 보내기 좋아요. 여러 쪽이면 ZIP으로 묶어요." },
   txt: { title: "텍스트 (.txt)", tag: "글 위주", shape: false, desc: "글자만 뽑아요. 표는 칸을 탭으로 나누고, 그림·서식은 빠져요." },
 };
@@ -178,7 +179,7 @@ export function mountHwp(root: HTMLElement): Mounted {
   const progRow = h("div", { class: "hwp-progress" }, prog.el, cancelBtn);
   const dz = dropzone({
     accept: "", multiple: false, // 휴대폰 파일 선택기가 .hwp 를 회색으로 막지 않게 모든 파일을 받고 내용으로 가려요
-    title: "HWP·HWPX 파일을 끌어다 놓으세요", sub: "한글 문서 · .hwp · .hwpx · 100MB까지 · 이 기기 안에서만 열어요",
+    title: "HWP·HWPX 파일을 끌어다 놓으세요", sub: "한글 문서 · .hwp · .hwpx · 100MB까지",
     onFiles: (f) => { if (f[0]) void load(f[0]); },
   });
 
@@ -193,13 +194,13 @@ export function mountHwp(root: HTMLElement): Mounted {
     h("p", { style: "margin:0 0 10px" }, "암호가 걸린 문서예요. 문서를 보낸 사람에게 받은 암호를 넣어 주세요."),
     h("div", { class: "hwp-pw-row" }, pwIn, pwBtn),
     pwBad,
-    h("p", { class: "hint" }, "암호는 이 기기 안에서 문서를 여는 데만 써요. 집문서는 암호를 저장하거나 보내지 않아요."));
+    h("p", { class: "hint" }, "암호는 문서를 여는 데만 쓰고 저장하지 않아요."));
 
   /* 미리보기 */
   const fileLine = h("div", { class: "muted hwp-file" });
   const notices = h("div", { class: "hwp-notices" });
-  const prevBtn = h("button", { type: "button", class: "btn sm", onclick: () => go(cur - 1) }, "‹ 앞 쪽");
-  const nextBtn = h("button", { type: "button", class: "btn sm", onclick: () => go(cur + 1) }, "뒤 쪽 ›");
+  const prevBtn = h("button", { type: "button", class: "btn sm", onclick: () => go(cur - 1) }, icon("back"), "앞 쪽");
+  const nextBtn = h("button", { type: "button", class: "btn sm", onclick: () => go(cur + 1) }, "뒤 쪽", icon("next"));
   const pageIn = h("input", { class: "input num hwp-pagein", type: "number", inputmode: "numeric", min: "1", "aria-label": "쪽 번호" });
   const pageTotal = h("span", { class: "muted" });
   pageIn.addEventListener("change", () => { const n = parseInt(pageIn.value, 10); if (Number.isFinite(n)) go(n - 1); else updatePager(); });
@@ -564,7 +565,7 @@ export function mountHwp(root: HTMLElement): Mounted {
     if (!pic) {
       optHint.className = "hint";
       optHint.textContent = fmt === "docx"
-        ? "글·표·그림과 머리말·꼬리말·각주·미주를 옮겨요. 차트는 빠지고, 글꼴·줄 간격·쪽 나눔은 Word가 다시 정해요." + (IS_MOBILE && doc.size > MOBILE_WARN_BYTES ? " " + MSG.bigDocxMobile : "")
+        ? "글·표·그림과 머리말·꼬리말·각주·미주를 옮겨요. 줄 간격과 쪽 크기는 원본 값을 쓰고, 글꼴과 쪽 나눔은 Word가 다시 정해요. 차트는 빠져요." + (IS_MOBILE && doc.size > MOBILE_WARN_BYTES ? " " + MSG.bigDocxMobile : "")
         : "UTF-8 글자 파일이에요. 메모장·한글·워드 어디서나 열려요. 각주·미주는 끝에 모아 적어요.";
       makeBtn.disabled = busy;
       return;
@@ -647,10 +648,11 @@ export function mountHwp(root: HTMLElement): Mounted {
           const r = await client.docx(onP);
           if (!alive()) return;
           setCancel(false);
+          if (r.tooWide) { prog.hide(); err.show(MSG.docxTooWide(r.tooWide)); return; }
           prog.set(1, "완료!");
           out.replaceChildren(resultBox("Word 파일을 만들었어요",
             resultItem({ name: exportName(d.name, "docx"), blob: new Blob([r.bytes], { type: DOCX_MIME }), extra: "글·표 위주" }),
-            diffNote(r.warn, "줄 간격·쪽 나눔은 Word가 다시 정해요.")));
+            diffNote(r.warn, "쪽 나눔은 Word가 다시 정해요.")));
         } else {
           const r = await client.txt(onP);
           if (!alive()) return;

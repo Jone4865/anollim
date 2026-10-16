@@ -12,7 +12,8 @@ export class HwpClientError extends Error {
 }
 export interface OpenResult { pages: number; sizes: { w: number; h: number }[] }
 export interface ExportProgress { done: number; total: number; phase?: "pack" }
-export interface DocxResult { bytes: Uint8Array<ArrayBuffer>; warn: Warn }
+/** tooWide: 63칸이 넘는 표가 있어 Word 를 만들지 않았을 때 그 표의 칸 수(bytes 는 비어 있어요) */
+export interface DocxResult { bytes: Uint8Array<ArrayBuffer>; warn: Warn; tooWide?: number }
 export interface TxtResult { text: string; warn: Warn }
 
 interface Job {
