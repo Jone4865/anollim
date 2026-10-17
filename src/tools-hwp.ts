@@ -9,6 +9,7 @@
 //  - 편집 가능하게 바꾸기(convertToEditable)·HWP 로 다시 저장은 부르지 않아요(타입에도 없어요).
 // 설계: _workspace/review/HWP_SPEC.md (4·5·6·7·12장)
 import { h, icon, dropzone, progress, alertBox, resultItem, seg, toast, runPdf, canvasToBlob, LIMITS, MAX_PIXELS, IS_IOS, type Seg } from "./ui.js";
+import { PREF, readPref, writePref } from "./prefs.js";
 import { formatSize, parseRanges, rangesToSet } from "./lib.js";
 import { sniffHwp, distributionFlags, hwpPolicy, hwpErrorCode, pdfEstimateKB, pngEstimateKB, maxExportPages, type HwpSniff, type HwpPolicy, type HwpDpi } from "./hwp-lib.js";
 import { prepareSvg, pxToPt, FONT_BASE, FAMILY, type FontFace, type Fonts } from "./hwp-svg.js";
@@ -28,10 +29,7 @@ const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingm
 const LOW_MEMORY = ((navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8) <= 2;
 
 /* ───── 기억하는 설정 두 개(화질·굵은 글꼴). 저장이 막힌 브라우저면 기본값으로 ───── */
-const PREF = { dpi: "jms.hwp.dpi", bold: "jms.hwp.bold" } as const;
-function readPref(k: string): string | null { try { return localStorage.getItem(k); } catch { return null; } }
-function writePref(k: string, v: string): void { try { localStorage.setItem(k, v); } catch { /* 기억 못 해도 괜찮아요 */ } }
-const savedDpi = (): HwpDpi => { const n = Number(readPref(PREF.dpi)); return n === 200 || n === 300 ? n : 150; };
+const savedDpi = (): HwpDpi => { const n = Number(readPref(PREF.hwpDpi)); return n === 200 || n === 300 ? n : 150; };
 
 const MSG = {
   notHwp: "HWP·HWPX 파일이 아니에요. 확장자만 바뀐 다른 파일일 수 있어요.",
@@ -162,7 +160,7 @@ export function mountHwp(root: HTMLElement): Mounted {
   let cur = 0;
   let zoom: "fit" | "big" = "fit";
   let busy = false;
-  let bold = readPref(PREF.bold) === "1";
+  let bold = readPref(PREF.hwpBold) === "1";
   /** 지금 쓸 글꼴: 굵은 글꼴을 켰고 받았으면 같이 */
   async function fonts(): Promise<Fonts> {
     const base = await loadFonts();
@@ -218,11 +216,11 @@ export function mountHwp(root: HTMLElement): Mounted {
   const boldRow = h("label", { class: "check-row hwp-bold" }, boldIn, h("span", {}, "제목 굵기 원본처럼 ", h("small", {}, "(글꼴 1.6MB 더 받기)")), boldState);
   boldIn.addEventListener("change", () => void setBold(boldIn.checked));
   async function setBold(on: boolean): Promise<void> {
-    bold = on; writePref(PREF.bold, on ? "1" : "0");
+    bold = on; writePref(PREF.hwpBold, on ? "1" : "0");
     if (on) {
       boldState.textContent = "받는 중…"; boldIn.disabled = true;
       try { await loadBold(); }
-      catch { bold = false; boldIn.checked = false; writePref(PREF.bold, "0"); toast(MSG.boldFail); }
+      catch { bold = false; boldIn.checked = false; writePref(PREF.hwpBold, "0"); toast(MSG.boldFail); }
       finally { boldState.textContent = ""; boldIn.disabled = false; }
     }
     if (doc) { clearCache(); void show(); }
@@ -247,7 +245,7 @@ export function mountHwp(root: HTMLElement): Mounted {
   }
   rangeIn.hidden = true;
   rangeIn.addEventListener("input", () => updateOpts());
-  const dpiSeg = seg<HwpDpi>([{ value: 150, label: "보통 150dpi" }, { value: 200, label: "선명하게 200dpi" }, { value: 300, label: "인쇄용 300dpi" }], dpi, (v) => { dpi = v; writePref(PREF.dpi, String(v)); updateOpts(); });
+  const dpiSeg = seg<HwpDpi>([{ value: 150, label: "보통 150dpi" }, { value: 200, label: "선명하게 200dpi" }, { value: 300, label: "인쇄용 300dpi" }], dpi, (v) => { dpi = v; writePref(PREF.hwpDpi, String(v)); updateOpts(); });
   const optHint = h("p", { class: "hint" });
   const makeBtn = h("button", { type: "button", class: "btn primary", onclick: () => void runExport() });
   const picOpts = h("div", { class: "opts" },

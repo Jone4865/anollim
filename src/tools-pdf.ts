@@ -1,5 +1,6 @@
 // PDF 도구: 합치기 / 나누기·페이지 빼기 / 회전·순서
 import { h, ICONS, icon, arrowed, iconBtn, dropzone, progress, alertBox, errMsg, resultItem, sortable, seg, filterFiles, LIMITS, runPdf, openPdfjs, thumbRenderer, makeZip, toast, renderPdfPage, canvasToBlob } from "./ui.js";
+import { PREF, readPref, writePref, pickPref } from "./prefs.js";
 import { formatSize, outName, moveItem, parseRanges, rangesToSet, formatRanges, uniqueNames, baseName, safeName, normRotation, savedPercent, COMPRESS_PRESETS, type CompressMode, type CompressLevel } from "./lib.js";
 import type { ShrinkStats } from "./pdf-shrink.js";
 import type { ThumbRenderer } from "./ui.js";
@@ -358,7 +359,9 @@ export function mountOrganize(root: HTMLElement): Mounted {
 export function mountPdfCompress(root: HTMLElement): Mounted {
   let cur: { file: File; buf: ArrayBuffer; pages: number } | null = null;
   const C = () => cur as NonNullable<typeof cur>; // PDF 를 연 뒤에만 불림
-  let mode: CompressMode = "images", level: CompressLevel = "normal";
+  // 방법·정도는 지난번에 고른 값으로 시작해요(prefs.ts)
+  let mode: CompressMode = pickPref<CompressMode>(readPref(PREF.pdfMode), ["images", "raster"], "images");
+  let level: CompressLevel = pickPref<CompressLevel>(readPref(PREF.pdfLevel), ["light", "normal", "strong"], "normal");
   const err = alertBox();
   const prog = progress();
   const out = h("div");
@@ -366,8 +369,8 @@ export function mountPdfCompress(root: HTMLElement): Mounted {
   const fileLine = h("div", { class: "muted" });
   const modeHint = h("div", { class: "hint" });
   const levelHint = h("div", { class: "hint" });
-  const modeSeg = seg<CompressMode>([{ value: "images", label: "사진만 줄이기" }, { value: "raster", label: "쪽을 통째로 이미지로" }], mode, (v) => { mode = v; sync(); });
-  const levelSeg = seg<CompressLevel>([{ value: "light", label: "조금" }, { value: "normal", label: "보통" }, { value: "strong", label: "많이" }], level, (v) => { level = v; sync(); });
+  const modeSeg = seg<CompressMode>([{ value: "images", label: "사진만 줄이기" }, { value: "raster", label: "쪽을 통째로 이미지로" }], mode, (v) => { mode = v; writePref(PREF.pdfMode, v); sync(); });
+  const levelSeg = seg<CompressLevel>([{ value: "light", label: "조금" }, { value: "normal", label: "보통" }, { value: "strong", label: "많이" }], level, (v) => { level = v; writePref(PREF.pdfLevel, v); sync(); });
   const go = h("button", { type: "button", class: "btn primary big", onclick: run }, "용량 줄이기");
   const work = h("div", { hidden: true },
     h("div", { class: "panel" },

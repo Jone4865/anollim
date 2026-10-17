@@ -43,6 +43,12 @@ nav .links a:hover { color: var(--ink); text-decoration: underline; text-decorat
 h1 { font-size: clamp(40px, 6.4vw, 68px); line-height: 1.08; margin: 0 0 18px; letter-spacing: -.035em; font-weight: 850; }
 .lead { color: var(--muted); font-size: 18px; margin: 0; max-width: 560px; }
 .lead b { color: var(--ink); font-weight: 650; }
+/* 최근에 쓴 도구 — 다시 온 사람이 작업대까지 내려가지 않게 */
+.recent { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 8px; margin: 18px 0 0; padding: 0; }
+.recent[hidden] { display: none; }
+.recent-lbl { font-size: 13px; font-weight: 700; color: var(--muted); margin-right: 2px; }
+.recent a { text-decoration: none; font-size: 14px; font-weight: 650; padding: 8px 14px; border: 1.5px solid var(--line2); border-radius: 999px; background: var(--sheet); color: var(--ink); min-height: 40px; display: inline-flex; align-items: center; gap: 4px; }
+.recent a:hover { border-color: var(--acc); background: var(--acc-soft); }
 
 /* 커팅 매트 */
 .mat { position: relative; background-color: var(--mat); border-radius: 14px; color: var(--mat-ink);
@@ -90,6 +96,11 @@ h1 { font-size: clamp(40px, 6.4vw, 68px); line-height: 1.08; margin: 0 0 18px; l
 .tool-item:nth-child(3), .tool-item:nth-child(6), .tool-item:nth-child(7), .tool-item:nth-child(8) { grid-column: span 4; }
 .tool-item:nth-child(9), .tool-item:nth-child(10) { grid-column: span 6; }
 .tool-item:nth-child(1), .tool-item:nth-child(6) { background: #eef3ff; }
+/* 첫 화면에 떨어뜨린 파일로 쓸 도구 고르기 */
+.drop-offer { margin: -6px 0 20px; padding: 16px; border-radius: 14px; background: var(--sheet); color: var(--ink); display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.drop-offer[hidden] { display: none; }
+.offer-title { flex-basis: 100%; margin: 0; font-weight: 750; overflow-wrap: anywhere; }
+.offer-tools { display: flex; flex-wrap: wrap; gap: 8px; }
 .bench-memo { grid-column: 1 / -1; margin: 4px 0 0; color: var(--mat-ink); font-size: 15px; opacity: .92; }
 .bench-memo a { color: #fff; font-weight: 700; }
 

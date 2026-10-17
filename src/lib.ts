@@ -158,6 +158,20 @@ export function kindOf(file: { name?: string; type?: string } | null | undefined
   return "other";
 }
 
+/**
+ * 첫 화면에 파일을 떨어뜨렸을 때 쓸 수 있는 도구(앞에 둔 것이 먼저) — 하나면 바로 열고, 여럿이면 고르게 해요(app.ts).
+ * 한 개만 받는 도구(나누기·회전·용량 줄이기·가리기·배경 지우기)는 파일이 하나일 때만. 섞여 있거나 모르는 파일이면 빈 목록
+ */
+export function toolsForFiles(files: readonly { name?: string; type?: string }[]): string[] {
+  if (!files.length) return [];
+  if (files.every((f) => /\.hwpx?$/i.test(String(f.name || "")))) return files.length === 1 ? ["hwp-view"] : [];
+  const kinds = new Set(files.map((f) => kindOf(f)));
+  const one = files.length === 1;
+  if (kinds.size === 1 && kinds.has("pdf")) return one ? ["pdf-compress", "pdf-split", "pdf-organize", "id-mask"] : ["pdf-merge"];
+  if ([...kinds].every((k) => k === "image" || k === "heic")) return one ? ["img-compress", "img-to-pdf", "id-mask", "bg-remove", "exif-clean"] : ["img-to-pdf", "img-compress", "exif-clean"];
+  return [];
+}
+
 /** 이미지 → PDF 배치 계산. 단위 pt. pageSize: "a4" | "original", margin pt */
 export function layoutImage(imgW: number, imgH: number, pageSize: PageSize, marginPt = 0): ImageLayout {
   if (pageSize === "original") {

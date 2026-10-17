@@ -26,6 +26,9 @@ https://jipmunseo.pages.dev (Cloudflare Pages · 예전 `*.vercel.app` 주소는
 
 결과 PDF 에는 제작 도구 이름(Producer·Creator)을 넣지 않아요.
 
+- 첫 화면에 파일을 떨어뜨리면 쓸 수 있는 도구를 보여 주고, 고르면 그 도구에 파일을 넘겨요(HWP·여러 PDF처럼 도구가 하나면 바로 열어요 — `src/lib.ts` `toolsForFiles`, `src/app.ts` `offerTools`·`giveFiles`).
+- 이 브라우저에 기억하는 것(`src/prefs.ts`, localStorage): HWP 화질·굵은 글꼴, 이미지 압축의 형식·화질·최대 크기, PDF 용량 줄이기의 방법·정도, 최근에 연 도구 3개(첫 화면 소개 아래 칩). 문서 이름·내용은 남기지 않아요. 처리방침 '이 브라우저에 기억하는 것'과 같이 고쳐요.
+
 ## 라이선스
 
 이 저장소는 **GNU AGPL-3.0** 으로 공개합니다 (`LICENSE`).

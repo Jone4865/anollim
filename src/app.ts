@@ -5,6 +5,8 @@ import { mountImgToPdf, mountCompress, mountExif } from "./tools-img.js";
 import { mountBg } from "./tools-bg.js";
 import { mountMask } from "./tools-mask.js";
 import { art } from "./art.js";
+import { toolsForFiles } from "./lib.js";
+import { PREF, readPref, writePref, pushRecent, parseRecent } from "./prefs.js";
 
 /** 도구 화면이 돌려주는 것 (없으면 {}) */
 export interface Mounted { unmount?: () => void; onPaste?: (files: File[]) => void }
@@ -46,6 +48,42 @@ $id("tool-grid").replaceChildren(
     h("h3", {}, ...arrowed(t.title)), h("p", {}, t.desc))),
   h("p", { class: "bench-memo" }, "필요한 도구가 없나요? ", h("a", { href: "mailto:cowhddnjsdl0@gmail.com" }, "메일로 알려 주세요", ...arrowed(" → ", true))));
 
+/* 최근에 연 도구(3개) — 첫 화면 소개 아래 칩. 도구 이름만 기억해요(prefs.ts) */
+let recent = parseRecent(readPref(PREF.recent), new Set(TOOLS.map((t) => t.id)));
+function renderRecent(): void {
+  const box = $id("recent");
+  box.hidden = !recent.length;
+  box.replaceChildren(...(recent.length ? [h("span", { class: "recent-lbl" }, "최근에 쓴 도구"), ...recent.map((id) => h("a", { href: `#${id}` }, ...arrowed(byId[id].title)))] : []));
+}
+
+/* 첫 화면에 떨어뜨린 파일 → 쓸 도구를 고르면 그 도구에 파일을 넘겨요 */
+let handoff: File[] | null = null;
+function offerTools(files: File[]): void {
+  const ids = toolsForFiles(files);
+  const box = $id("drop-offer");
+  if (!ids.length) { box.hidden = true; toast("이 파일을 쓰는 도구가 없어요. HWP·PDF·사진 파일을 넣어 주세요"); return; }
+  if (ids.length === 1) { handoff = files; location.hash = ids[0]; return; }
+  const what = files.length === 1 ? `‘${files[0].name}’` : `파일 ${files.length}개`;
+  box.replaceChildren(
+    h("p", { class: "offer-title" }, `${what}로 무엇을 할까요?`),
+    h("div", { class: "offer-tools" }, ...ids.map((id) => h("button", { type: "button", class: "btn", onclick: () => { handoff = files; box.hidden = true; location.hash = id; } }, ...arrowed(byId[id].title)))),
+    h("button", { type: "button", class: "btn ghost sm", onclick: () => { box.hidden = true; } }, "그만두기"));
+  box.hidden = false;
+  box.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  (box.querySelector(".offer-tools button") as HTMLElement | null)?.focus({ preventScroll: true });
+}
+/** 도구의 파일 고르기 칸에 넘겨받은 파일을 넣어요(HWP 처럼 코드를 받는 도구는 칸이 생길 때까지 잠깐 기다려요) */
+function giveFiles(body: HTMLElement, files: File[], tries = 0): void {
+  const input = body.querySelector<HTMLInputElement>(".drop input[type=file]");
+  if (!input) { if (tries < 50 && body.isConnected) setTimeout(() => giveFiles(body, files, tries + 1), 100); return; }
+  try {
+    const dt = new DataTransfer();
+    for (const f of files) dt.items.add(f);
+    input.files = dt.files;
+    input.dispatchEvent(new Event("change"));
+  } catch { toast("파일을 점선 상자에 다시 놓아 주세요"); }
+}
+
 const home = $id("home");
 const view = $id("tool-view");
 const other = $id("other-tools");
@@ -60,6 +98,7 @@ function route() {
     view.hidden = true; view.replaceChildren();
     home.hidden = false; other.hidden = true;
     document.title = baseTitle;
+    renderRecent();
     if (id && document.getElementById(id)) $id(id).scrollIntoView();
     else window.scrollTo(0, 0);
     return;
@@ -75,6 +114,10 @@ function route() {
   other.hidden = false;
   other.replaceChildren(...TOOLS.filter((t) => t.id !== id).map((t) => h("a", { href: `#${t.id}` }, ...arrowed(t.title))));
   active = tool.mount(body) || {};
+  recent = pushRecent(recent, id);
+  writePref(PREF.recent, JSON.stringify(recent));
+  $id("drop-offer").hidden = true;
+  if (handoff) { const fs = handoff; handoff = null; giveFiles(body, fs); }
   window.scrollTo(0, 0);
 }
 
@@ -94,6 +137,7 @@ window.addEventListener("dragover", (e) => { if ([...(e.dataTransfer?.types || [
 window.addEventListener("drop", (e) => {
   if (!e.defaultPrevented && [...(e.dataTransfer?.types || [])].includes("Files")) {
     e.preventDefault();
-    toast(active ? "점선 상자 안에 놓아 주세요" : "먼저 쓸 도구를 골라 주세요");
+    if (active) toast("점선 상자 안에 놓아 주세요");
+    else offerTools([...(e.dataTransfer as DataTransfer).files]);
   }
 });

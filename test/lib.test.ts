@@ -2,8 +2,9 @@ import { test } from "vitest";
 import assert from "node:assert/strict";
 import {
   parseRanges, rangesToSet, formatRanges, formatSize, savedPercent, baseName, safeName,
-  outName, uniqueNames, moveItem, fitWithin, normRotation, extFor, kindOf, layoutImage, mmToPt, formatCoord,
+  outName, uniqueNames, moveItem, fitWithin, normRotation, extFor, kindOf, layoutImage, mmToPt, formatCoord, toolsForFiles,
 } from "../src/lib.js";
+import { pushRecent, parseRecent, pickPref, intPref, sizePref } from "../src/prefs.js";
 
 test("parseRanges: 기본", () => {
   assert.deepEqual(parseRanges("1-3, 5, 8-10", 10), [[0, 1, 2], [4], [7, 8, 9]]);
@@ -105,4 +106,39 @@ test("formatCoord", () => {
   assert.equal(formatCoord(37.5665, 126.978), "37.56650°N, 126.97800°E");
   assert.equal(formatCoord(-33.8688, -151.2093), "33.86880°S, 151.20930°W");
   assert.equal(formatCoord(NaN, 1), "");
+});
+
+test("toolsForFiles: 첫 화면에 떨어뜨린 파일로 쓸 도구", () => {
+  assert.deepEqual(toolsForFiles([{ name: "공고문.hwp" }]), ["hwp-view"]);
+  assert.deepEqual(toolsForFiles([{ name: "서식.HWPX" }]), ["hwp-view"]);
+  assert.deepEqual(toolsForFiles([{ name: "a.hwp" }, { name: "b.hwp" }]), []); // 한 번에 하나만 열어요
+  assert.deepEqual(toolsForFiles([{ name: "계약서.pdf", type: "application/pdf" }])[0], "pdf-compress");
+  assert.deepEqual(toolsForFiles([{ name: "a.pdf" }, { name: "b.pdf" }]), ["pdf-merge"]);
+  assert.ok(toolsForFiles([{ name: "신분증.jpg", type: "image/jpeg" }]).includes("id-mask"));
+  assert.deepEqual(toolsForFiles([{ name: "a.jpg" }, { name: "b.heic" }]), ["img-to-pdf", "img-compress", "exif-clean"]);
+  assert.deepEqual(toolsForFiles([{ name: "a.pdf" }, { name: "b.jpg" }]), []);
+  assert.deepEqual(toolsForFiles([{ name: "메모.txt", type: "text/plain" }]), []);
+  assert.deepEqual(toolsForFiles([]), []);
+});
+
+test("prefs: 최근 도구·기억한 값 읽기", () => {
+  assert.deepEqual(pushRecent([], "pdf-merge"), ["pdf-merge"]);
+  assert.deepEqual(pushRecent(["a", "b", "c"], "b"), ["b", "a", "c"]);
+  assert.deepEqual(pushRecent(["a", "b", "c"], "d"), ["d", "a", "b"]);
+  const known = new Set(["a", "b", "c", "d"]);
+  assert.deepEqual(parseRecent('["b","x","b","a","c","d"]', known), ["b", "a", "c"]);
+  assert.deepEqual(parseRecent("깨진 값", known), []);
+  assert.deepEqual(parseRecent('{"a":1}', known), []);
+  assert.deepEqual(parseRecent(null, known), []);
+  assert.equal(pickPref("raster", ["images", "raster"], "images"), "raster");
+  assert.equal(pickPref("뭔가", ["images", "raster"], "images"), "images");
+  assert.equal(pickPref(null, ["images", "raster"], "images"), "images");
+  assert.equal(intPref("65", 10, 100, 80), 65);
+  assert.equal(intPref("5", 10, 100, 80), 80);
+  assert.equal(intPref("", 10, 100, 80), 80);
+  assert.equal(intPref("7.5", 1, 10, 3), 3);
+  assert.equal(sizePref("1280"), "1280");
+  assert.equal(sizePref(""), "");
+  assert.equal(sizePref("-3"), "");
+  assert.equal(sizePref(null), "");
 });

@@ -1,5 +1,6 @@
 // 이미지 도구: 이미지→PDF / 압축·변환·크기 / 사진 정보(EXIF) 지우기
 import { type SegOption, h, ICONS, icon, arrowed, iconBtn, dropzone, progress, alertBox, errMsg, resultItem, sortable, seg, filterFiles, LIMITS, runPdf, decodeImage, drawToCanvas, canvasToBlob, canEncode, thumbURL, makeZip, download, toast } from "./ui.js";
+import { PREF, readPref, writePref, pickPref, intPref, sizePref } from "./prefs.js";
 import { formatSize, outName, moveItem, savedPercent, fitWithin, extFor, kindOf, mmToPt, uniqueNames, formatCoord } from "./lib.js";
 import { vendorImport, type ExifrModule, type Exifr, type ExifData } from "./vendor.js";
 import type { Mounted } from "./app.js";
@@ -128,8 +129,10 @@ export function mountImgToPdf(root: HTMLElement): Mounted {
 }
 
 /* ═════════ 5. 이미지 압축 · 변환 · 크기 조절 ═════════ */
+const IMG_FMTS = ["keep", "image/jpeg", "image/png", "image/webp", "image/avif"] as const;
 export function mountCompress(root: HTMLElement): Mounted {
-  let fmt = "keep", quality = 80;
+  // 저장 형식·화질·최대 크기는 지난번에 고른 값으로 시작해요(prefs.ts)
+  let fmt: string = pickPref(readPref(PREF.imgFmt), IMG_FMTS, "keep"), quality = intPref(readPref(PREF.imgQuality), 10, 100, 80);
   const err = alertBox();
   const prog = progress();
   const out = h("div");
@@ -139,8 +142,11 @@ export function mountCompress(root: HTMLElement): Mounted {
   const qVal = h("b", {}, `${quality}%`);
   const q = h("input", { type: "range", min: "10", max: "100", step: "1", value: String(quality), "aria-label": "화질" });
   q.addEventListener("input", () => { quality = Number(q.value); qVal.textContent = `${quality}%`; });
-  const maxW = h("input", { class: "input num", type: "number", min: "1", inputmode: "numeric", placeholder: "그대로", "aria-label": "최대 가로(px)" });
-  const maxH = h("input", { class: "input num", type: "number", min: "1", inputmode: "numeric", placeholder: "그대로", "aria-label": "최대 세로(px)" });
+  q.addEventListener("change", () => writePref(PREF.imgQuality, String(quality)));
+  const maxW = h("input", { class: "input num", type: "number", min: "1", inputmode: "numeric", placeholder: "그대로", "aria-label": "최대 가로(px)", value: sizePref(readPref(PREF.imgMaxW)) });
+  const maxH = h("input", { class: "input num", type: "number", min: "1", inputmode: "numeric", placeholder: "그대로", "aria-label": "최대 세로(px)", value: sizePref(readPref(PREF.imgMaxH)) });
+  const saveMax = () => { writePref(PREF.imgMaxW, sizePref(maxW.value)); writePref(PREF.imgMaxH, sizePref(maxH.value)); };
+  maxW.addEventListener("change", saveMax); maxH.addEventListener("change", saveMax);
   const qOpt = h("div", { class: "opt" }, h("span", { class: "lbl" }, "화질 ", qVal), q, h("div", { class: "hint" }, "70~85%면 눈으로 차이를 느끼기 어려워요. PNG는 화질 설정이 없어요."));
   const fmtOpts: SegOption<string>[] = [
     { value: "keep", label: "원래 형식" },
@@ -149,7 +155,7 @@ export function mountCompress(root: HTMLElement): Mounted {
     { value: "image/webp", label: "WebP" },
     { value: "image/avif", label: "AVIF" },
   ];
-  const fmtSeg = seg(fmtOpts, fmt, (v) => { fmt = v; syncQ(); });
+  const fmtSeg = seg(fmtOpts, fmt, (v) => { fmt = v; writePref(PREF.imgFmt, v); syncQ(); });
   const fmtHint = h("div", { class: "hint" });
   const count = h("span", { class: "muted" });
   const panel = h("div", { class: "panel", hidden: true },
@@ -159,14 +165,16 @@ export function mountCompress(root: HTMLElement): Mounted {
       h("div", { class: "opt" }, h("span", { class: "lbl" }, "저장 형식"), fmtSeg, fmtHint),
       qOpt,
       h("div", { class: "opt" }, h("span", { class: "lbl" }, "최대 크기 (px, 비율 유지)"), h("div", { class: "row" }, maxW, h("span", { class: "muted" }, "×"), maxH),
-        h("div", { class: "row", style: "margin-top:8px" }, ...[["1920", "FHD"], ["1280", "1280"], ["800", "800"]].map(([v, l]) => h("button", { type: "button", class: "btn sm", onclick: () => { maxW.value = v; maxH.value = v; } }, l)),
-          h("button", { type: "button", class: "btn sm ghost", onclick: () => { maxW.value = ""; maxH.value = ""; } }, "그대로")))));
+        h("div", { class: "row", style: "margin-top:8px" }, ...[["1920", "FHD"], ["1280", "1280"], ["800", "800"]].map(([v, l]) => h("button", { type: "button", class: "btn sm", onclick: () => { maxW.value = v; maxH.value = v; saveMax(); } }, l)),
+          h("button", { type: "button", class: "btn sm ghost", onclick: () => { maxW.value = ""; maxH.value = ""; saveMax(); } }, "그대로")))));
   root.append(dz, err.el, panel, h("div", { class: "actions" }, go), prog.el, out);
 
   // 브라우저가 저장할 수 없는 형식은 끄기
   (async () => {
     const no: string[] = [];
     for (const o of fmtOpts) if (o.value.startsWith("image/") && !(await canEncode(o.value))) { o.disabled = true; o.title = "이 브라우저는 이 형식으로 저장할 수 없어요"; no.push(o.label); }
+    // 지난번에 고른 형식을 이 브라우저가 저장할 수 없으면 원래 형식으로
+    if (fmtOpts.some((o) => o.value === fmt && o.disabled)) { fmt = "keep"; syncQ(); }
     fmtSeg.setValue(fmt);
     fmtHint.textContent = no.length ? `이 브라우저는 ${no.join(", ")} 저장을 지원하지 않아요. (원래 형식이 그렇다면 JPG로 저장해요)` : "원래 형식: JPG는 JPG로, PNG는 PNG로 저장해요. HEIC는 JPG로.";
   })();
