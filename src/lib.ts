@@ -76,10 +76,14 @@ export function formatSize(bytes: number): string {
   return `${v >= 100 ? Math.round(v) : v >= 10 ? v.toFixed(1).replace(/\.0$/, "") : v.toFixed(2).replace(/\.?0+$/, "")} ${units[u]}`;
 }
 
-/** 줄어든 비율(%) — 커지면 음수 */
+/**
+ * 줄어든 비율(%) — 커지면 음수. 줄었으면 내림이라 다 줄지 않았는데 '100% 줄었어요'가 되지 않고,
+ * 조금이라도 커졌으면 -1 이하라 '0% 줄었어요'(반올림한 -0)로 보이지 않아요.
+ */
 export function savedPercent(before: number, after: number): number {
-  if (!before) return 0;
-  return Math.round((1 - after / before) * 100);
+  if (!before || after === before) return 0;
+  const r = (1 - after / before) * 100;
+  return r > 0 ? Math.floor(r) : -Math.max(1, Math.round(-r));
 }
 
 /** "사진.final.JPG" → "사진.final" */

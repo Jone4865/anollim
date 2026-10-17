@@ -63,7 +63,8 @@ function offerTools(files: File[]): void {
   const box = $id("drop-offer");
   if (!ids.length) { box.hidden = true; toast("이 파일을 쓰는 도구가 없어요. HWP·PDF·사진 파일을 넣어 주세요"); return; }
   if (ids.length === 1) { handoff = files; location.hash = ids[0]; return; }
-  const what = files.length === 1 ? `‘${files[0].name}’` : `파일 ${files.length}개`;
+  // 파일 이름 뒤에 바로 조사를 붙이면 받침에 따라 '로/으로'가 틀려서('계약서 최종본로') '파일로'로 받아요
+  const what = files.length === 1 ? `‘${files[0].name}’ 파일` : `파일 ${files.length}개`;
   box.replaceChildren(
     h("p", { class: "offer-title" }, `${what}로 무엇을 할까요?`),
     h("div", { class: "offer-tools" }, ...ids.map((id) => h("button", { type: "button", class: "btn", onclick: () => { handoff = files; box.hidden = true; location.hash = id; } }, ...arrowed(byId[id].title)))),
@@ -75,7 +76,13 @@ function offerTools(files: File[]): void {
 /** 도구의 파일 고르기 칸에 넘겨받은 파일을 넣어요(HWP 처럼 코드를 받는 도구는 칸이 생길 때까지 잠깐 기다려요) */
 function giveFiles(body: HTMLElement, files: File[], tries = 0): void {
   const input = body.querySelector<HTMLInputElement>(".drop input[type=file]");
-  if (!input) { if (tries < 50 && body.isConnected) setTimeout(() => giveFiles(body, files, tries + 1), 100); return; }
+  if (!input) {
+    if (!body.isConnected) return;
+    // 도구 코드를 받는 데 오래 걸리면(느린 연결) 기다리다 말없이 파일을 버리지 않고 다시 놓아 달라고 해요
+    if (tries < 50) setTimeout(() => giveFiles(body, files, tries + 1), 100);
+    else toast("파일을 점선 상자에 다시 놓아 주세요");
+    return;
+  }
   try {
     const dt = new DataTransfer();
     for (const f of files) dt.items.add(f);

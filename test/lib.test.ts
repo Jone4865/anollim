@@ -46,6 +46,11 @@ test("savedPercent", () => {
   assert.equal(savedPercent(1000, 250), 75);
   assert.equal(savedPercent(1000, 1200), -20);
   assert.equal(savedPercent(0, 10), 0);
+  // 거의 다 줄어도 100% 가 아니고, 조금 커져도 0% 줄었다고 하지 않아요
+  assert.equal(savedPercent(1000, 4), 99);
+  assert.equal(savedPercent(1000, 1003), -1);
+  assert.equal(savedPercent(1000, 1000), 0);
+  assert.equal(savedPercent(1000, 996), 0);
 });
 test("baseName / safeName / outName", () => {
   assert.equal(baseName("보고서.final.PDF"), "보고서.final");

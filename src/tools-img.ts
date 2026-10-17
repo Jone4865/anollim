@@ -230,7 +230,7 @@ export function mountCompress(root: HTMLElement): Mounted {
       const before = results.reduce((a, r) => a + r.it.file.size, 0), after = results.reduce((a, r) => a + r.blob.size, 0);
       const pct = savedPercent(before, after);
       const box = h("div", { class: "result", id: "result" },
-        h("h2", {}, icon("ok"), ...arrowed(`${results.length}장 끝! ${formatSize(before)} → ${formatSize(after)}`), h("span", { class: `pill ${pct >= 0 ? "good" : "bad"}` }, pct >= 0 ? `${pct}% 줄었어요` : `${-pct}% 커졌어요`)));
+        h("h2", {}, icon("ok"), ...arrowed(`${results.length}장 끝! ${formatSize(before)} → ${formatSize(after)}`), h("span", { class: `pill ${pct > 0 ? "good" : pct < 0 ? "bad" : ""}` }, pct > 0 ? `${pct}% 줄었어요` : pct < 0 ? `${-pct}% 커졌어요` : "거의 그대로")));
       if (results.length > 1) {
         const zipBtn: HTMLButtonElement = h("button", { type: "button", class: "btn primary", onclick: async () => { zipBtn.disabled = true; try { download(await makeZip(results), `사진-${results.length}장-변환.zip`); } catch (e) { err.show(errMsg(e)); } zipBtn.disabled = false; } }, icon("dl"), "모두 ZIP으로 받기");
         box.append(h("div", { class: "row", style: "margin-bottom:8px" }, zipBtn));
